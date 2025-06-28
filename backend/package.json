@@ -1,0 +1,36 @@
+{
+  "name": "rail-elearning-backend",
+  "version": "1.0.0",
+  "description": "Backend API pour l'application e-learning ferroviaire avec DataStax Astra",
+  "main": "api.js",
+  "scripts": {
+    "start": "node api.js",
+    "dev": "nodemon api.js",
+    "test": "node test-astra-connection.js",
+    "init-tables": "node init-tables.js"
+  },
+  "keywords": [
+    "astra",
+    "cassandra",
+    "e-learning",
+    "railway",
+    "api"
+  ],
+  "author": "RailEdu Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

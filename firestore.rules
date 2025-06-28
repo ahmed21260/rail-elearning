@@ -1,0 +1,195 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fonction pour vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est l'admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est un instructeur
+    function isInstructor() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'instructor';
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est l'utilisateur lui-même
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur a accès au cours
+    function hasCourseAccess(courseId) {
+      return isAuthenticated() && (
+        isAdmin() || 
+        isInstructor() || 
+        exists(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid))
+      );
+    }
+    
+    // Règles pour les utilisateurs
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Règles pour les cours
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isInstructor();
+      allow update: if isAdmin() || isInstructor();
+      allow delete: if isAdmin();
+      
+      // Sous-collection des inscriptions
+      match /enrollments/{enrollmentId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() || isInstructor();
+      }
+      
+      // Sous-collection des leçons
+      match /lessons/{lessonId} {
+        allow read: if hasCourseAccess(courseId);
+        allow write: if isAdmin() || isInstructor();
+      }
+      
+      // Sous-collection des quiz
+      match /quizzes/{quizId} {
+        allow read: if hasCourseAccess(courseId);
+        allow write: if isAdmin() || isInstructor();
+      }
+    }
+    
+    // Règles pour les leçons
+    match /lessons/{lessonId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isInstructor();
+    }
+    
+    // Règles pour les quiz
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isInstructor();
+      
+      // Sous-collection des résultats
+      match /results/{resultId} {
+        allow read: if isOwner(resource.data.userId) || isAdmin() || isInstructor();
+        allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+        allow update: if isOwner(resource.data.userId) || isAdmin() || isInstructor();
+      }
+    }
+    
+    // Règles pour les flashcards
+    match /flashcards/{flashcardId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isInstructor();
+    }
+    
+    // Règles pour les progressions
+    match /progress/{progressId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isInstructor();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin() || isInstructor();
+    }
+    
+    // Règles pour les alertes
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isInstructor();
+      allow update: if isAdmin() || isInstructor();
+      allow delete: if isAdmin();
+    }
+    
+    // Règles pour les analytics
+    match /analytics/{analyticsId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Règles pour les notifications
+    match /notifications/{notificationId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Règles pour les uploads
+    match /uploads/{uploadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Règles pour les paramètres système (admin seulement)
+    match /system/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Règles pour les rapports (admin et instructeurs)
+    match /reports/{reportId} {
+      allow read: if isAdmin() || isInstructor();
+      allow write: if isAdmin() || isInstructor();
+    }
+    
+    // Règles pour les intégrations externes
+    match /integrations/{integrationId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Règles pour les logs système
+    match /logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Règles pour les sessions utilisateur
+    match /sessions/{sessionId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Règles pour les géolocalisations
+    match /locations/{locationId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Règles pour les zones géographiques
+    match /zones/{zoneId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Règles pour les patterns d'apprentissage
+    match /learning_patterns/{patternId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Règles pour les recommandations
+    match /recommendations/{recommendationId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+  }
+} 

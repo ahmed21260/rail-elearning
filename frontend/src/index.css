@@ -1,0 +1,487 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import des polices Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Styles de base personnalisés */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  /* Scrollbar personnalisée */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+  
+  /* Focus styles */
+  *:focus {
+    @apply outline-none ring-2 ring-rail-blue ring-offset-2;
+  }
+  
+  /* Sélection de texte */
+  ::selection {
+    @apply bg-rail-blue text-white;
+  }
+}
+
+/* Composants personnalisés */
+@layer components {
+  /* Boutons */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply btn bg-rail-blue text-white hover:bg-blue-700 focus:ring-rail-blue;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:ring-rail-blue;
+  }
+  
+  .btn-success {
+    @apply btn bg-success-600 text-white hover:bg-success-700 focus:ring-success-500;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning-600 text-white hover:bg-warning-700 focus:ring-warning-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  
+  /* Cartes */
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200;
+  }
+  
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-200;
+  }
+  
+  .card-body {
+    @apply px-6 py-4;
+  }
+  
+  .card-footer {
+    @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+  }
+  
+  /* Formulaires */
+  .form-input {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-rail-blue focus:border-rail-blue sm:text-sm;
+  }
+  
+  .form-textarea {
+    @apply form-input resize-none;
+  }
+  
+  .form-select {
+    @apply form-input;
+  }
+  
+  .form-checkbox {
+    @apply h-4 w-4 text-rail-blue focus:ring-rail-blue border-gray-300 rounded;
+  }
+  
+  .form-radio {
+    @apply h-4 w-4 text-rail-blue focus:ring-rail-blue border-gray-300;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+  
+  .form-error {
+    @apply mt-1 text-sm text-danger-600;
+  }
+  
+  .form-help {
+    @apply mt-1 text-sm text-gray-500;
+  }
+  
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply badge bg-rail-blue text-white;
+  }
+  
+  .badge-secondary {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+  
+  .badge-success {
+    @apply badge bg-success-100 text-success-800;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-800;
+  }
+  
+  .badge-danger {
+    @apply badge bg-danger-100 text-danger-800;
+  }
+  
+  /* Alertes */
+  .alert {
+    @apply p-4 rounded-md border-l-4;
+  }
+  
+  .alert-info {
+    @apply alert bg-blue-50 border-blue-400 text-blue-700;
+  }
+  
+  .alert-success {
+    @apply alert bg-success-50 border-success-400 text-success-700;
+  }
+  
+  .alert-warning {
+    @apply alert bg-warning-50 border-warning-400 text-warning-700;
+  }
+  
+  .alert-danger {
+    @apply alert bg-danger-50 border-danger-400 text-danger-700;
+  }
+  
+  /* Navigation */
+  .nav-link {
+    @apply flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200;
+  }
+  
+  .nav-link-active {
+    @apply nav-link bg-rail-blue text-white;
+  }
+  
+  .nav-link-inactive {
+    @apply nav-link text-gray-600 hover:text-gray-900 hover:bg-gray-50;
+  }
+  
+  /* Tableaux */
+  .table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+  
+  .table-header {
+    @apply bg-gray-50;
+  }
+  
+  .table-header-cell {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+  
+  .table-body {
+    @apply bg-white divide-y divide-gray-200;
+  }
+  
+  .table-row {
+    @apply hover:bg-gray-50;
+  }
+  
+  .table-cell {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+  }
+  
+  /* Modales */
+  .modal-overlay {
+    @apply fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50;
+  }
+  
+  .modal-content {
+    @apply relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white;
+  }
+  
+  /* Loaders */
+  .loader {
+    @apply animate-spin rounded-full border-2 border-gray-300 border-t-rail-blue;
+  }
+  
+  .loader-sm {
+    @apply loader h-4 w-4;
+  }
+  
+  .loader-md {
+    @apply loader h-8 w-8;
+  }
+  
+  .loader-lg {
+    @apply loader h-12 w-12;
+  }
+  
+  /* Progress bars */
+  .progress {
+    @apply w-full bg-gray-200 rounded-full h-2;
+  }
+  
+  .progress-bar {
+    @apply bg-rail-blue h-2 rounded-full transition-all duration-300;
+  }
+  
+  /* Tooltips */
+  .tooltip {
+    @apply absolute z-10 px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 invisible transition-opacity duration-300;
+  }
+  
+  .tooltip-visible {
+    @apply opacity-100 visible;
+  }
+  
+  /* Animations personnalisées */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .bounce-in {
+    animation: bounceIn 0.6s ease-out;
+  }
+  
+  .pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* Utilitaires personnalisés */
+@layer utilities {
+  /* Text utilities */
+  .text-gradient {
+    @apply bg-gradient-to-r from-rail-blue to-blue-600 bg-clip-text text-transparent;
+  }
+  
+  /* Background utilities */
+  .bg-gradient-rail {
+    @apply bg-gradient-to-br from-rail-blue to-blue-900;
+  }
+  
+  /* Border utilities */
+  .border-rail {
+    @apply border-rail-blue;
+  }
+  
+  /* Shadow utilities */
+  .shadow-rail {
+    @apply shadow-rail;
+  }
+  
+  .shadow-rail-lg {
+    @apply shadow-rail-lg;
+  }
+  
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.6s ease-out;
+  }
+  
+  /* Responsive utilities */
+  .container-rail {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Print utilities */
+  @media print {
+    .no-print {
+      @apply hidden;
+    }
+    
+    .print-only {
+      @apply block;
+    }
+  }
+}
+
+/* Animations keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Styles pour les composants spécifiques */
+.quiz-question {
+  @apply p-6 bg-white rounded-lg shadow-sm border border-gray-200 mb-4;
+}
+
+.quiz-option {
+  @apply flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors duration-200;
+}
+
+.quiz-option-selected {
+  @apply quiz-option border-rail-blue bg-blue-50;
+}
+
+.quiz-option-correct {
+  @apply quiz-option border-success-500 bg-success-50;
+}
+
+.quiz-option-incorrect {
+  @apply quiz-option border-danger-500 bg-danger-50;
+}
+
+.flashcard {
+  @apply relative w-full h-64 perspective-1000;
+}
+
+.flashcard-inner {
+  @apply relative w-full h-full transition-transform duration-500 transform-style-preserve-3d;
+}
+
+.flashcard-flipped .flashcard-inner {
+  @apply rotate-y-180;
+}
+
+.flashcard-front,
+.flashcard-back {
+  @apply absolute w-full h-full backface-hidden rounded-lg shadow-lg p-6 flex items-center justify-center text-center;
+}
+
+.flashcard-front {
+  @apply bg-white border-2 border-rail-blue;
+}
+
+.flashcard-back {
+  @apply bg-rail-blue text-white rotate-y-180;
+}
+
+/* Styles pour les alertes d'urgence */
+.emergency-alert {
+  @apply fixed top-4 right-4 z-50 max-w-sm w-full bg-red-600 text-white rounded-lg shadow-lg p-4 animate-bounce-in;
+}
+
+.emergency-alert-critical {
+  @apply emergency-alert bg-red-700 border-l-4 border-red-900;
+}
+
+/* Styles pour la géolocalisation */
+.location-indicator {
+  @apply inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full;
+}
+
+.location-indicator-offline {
+  @apply location-indicator bg-gray-100 text-gray-800;
+}
+
+/* Styles pour les notifications PWA */
+.pwa-install-prompt {
+  @apply fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-40;
+}
+
+/* Styles pour les composants AR/VR */
+.ar-viewer {
+  @apply w-full h-96 bg-black rounded-lg overflow-hidden;
+}
+
+.vr-scene {
+  @apply w-full h-screen bg-gradient-to-b from-blue-900 to-black;
+}
+
+/* Styles pour les composants audio */
+.audio-player {
+  @apply w-full bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+}
+
+.audio-controls {
+  @apply flex items-center space-x-4;
+}
+
+.audio-progress {
+  @apply flex-1 h-2 bg-gray-200 rounded-full overflow-hidden;
+}
+
+.audio-progress-bar {
+  @apply h-full bg-rail-blue transition-all duration-300;
+}
+
+/* Styles pour l'accessibilité */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+}
+
+/* Styles pour les thèmes sombres (si activé) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode {
+    @apply bg-gray-900 text-white;
+  }
+  
+  .dark-mode .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .dark-mode .form-input {
+    @apply bg-gray-800 border-gray-600 text-white;
+  }
+} 

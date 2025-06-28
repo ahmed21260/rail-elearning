@@ -1,0 +1,200 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Fonction pour vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est l'admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est un instructeur
+    function isInstructor() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'instructor';
+    }
+    
+    // Fonction pour vérifier la taille du fichier (max 50MB)
+    function isValidFileSize() {
+      return request.resource.size < 50 * 1024 * 1024;
+    }
+    
+    // Fonction pour vérifier le type de fichier
+    function isValidFileType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType.matches('video/.*') ||
+             request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+             request.resource.contentType.matches('application/vnd.ms-powerpoint') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.presentationml.presentation') ||
+             request.resource.contentType.matches('application/vnd.ms-excel') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+    
+    // Fonction pour vérifier si l'utilisateur peut accéder au fichier
+    function canAccessFile(userId) {
+      return isAuthenticated() && (
+        request.auth.uid == userId || 
+        isAdmin() || 
+        isInstructor()
+      );
+    }
+    
+    // Règles pour les avatars utilisateur
+    match /avatars/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('image/.*');
+    }
+    
+    // Règles pour les images de cours
+    match /courses/{courseId}/images/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('image/.*');
+    }
+    
+    // Règles pour les vidéos de cours
+    match /courses/{courseId}/videos/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('video/.*');
+    }
+    
+    // Règles pour les documents de cours
+    match /courses/{courseId}/documents/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   isValidFileType();
+    }
+    
+    // Règles pour les médias de leçons
+    match /lessons/{lessonId}/media/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   isValidFileType();
+    }
+    
+    // Règles pour les uploads utilisateur
+    match /uploads/{userId}/{fileName} {
+      allow read: if canAccessFile(userId);
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isValidFileSize() && 
+                   isValidFileType();
+    }
+    
+    // Règles pour les rapports
+    match /reports/{reportId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   isValidFileType();
+    }
+    
+    // Règles pour les exports
+    match /exports/{userId}/{fileName} {
+      allow read: if canAccessFile(userId);
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isValidFileSize();
+    }
+    
+    // Règles pour les backups (admin seulement)
+    match /backups/{fileName} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Règles pour les logos et images de marque
+    match /branding/{fileName} {
+      allow read: if true; // Accessible publiquement
+      allow write: if isAdmin() && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('image/.*');
+    }
+    
+    // Règles pour les certificats
+    match /certificates/{userId}/{fileName} {
+      allow read: if canAccessFile(userId);
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('application/pdf');
+    }
+    
+    // Règles pour les captures d'écran de quiz
+    match /quiz-screenshots/{quizId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('image/.*');
+    }
+    
+    // Règles pour les fichiers temporaires
+    match /temp/{userId}/{fileName} {
+      allow read, write: if isAuthenticated() && 
+                        request.auth.uid == userId && 
+                        isValidFileSize();
+      
+      // Suppression automatique après 24h (géré côté serveur)
+    }
+    
+    // Règles pour les fichiers de configuration
+    match /config/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Règles pour les fichiers de données d'analyse
+    match /analytics/{fileName} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // Règles pour les fichiers de logs
+    match /logs/{fileName} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated();
+    }
+    
+    // Règles pour les fichiers de géolocalisation
+    match /locations/{userId}/{fileName} {
+      allow read: if canAccessFile(userId);
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isValidFileSize();
+    }
+    
+    // Règles pour les fichiers AR/VR
+    match /ar-vr/{courseId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   (request.resource.contentType.matches('model/.*') ||
+                    request.resource.contentType.matches('application/octet-stream'));
+    }
+    
+    // Règles pour les fichiers audio
+    match /audio/{courseId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isInstructor()) && 
+                   isValidFileSize() && 
+                   request.resource.contentType.matches('audio/.*');
+    }
+    
+    // Règles par défaut - refuser tout accès non autorisé
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 

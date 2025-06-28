@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1e40af" />
+    <meta name="description" content="Plateforme e-learning moderne pour opérateurs ferroviaires avec IA, quiz interactifs et alertes d'urgence" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Rail E-Learning" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#1e40af" />
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rail-elearning.com/" />
+    <meta property="og:title" content="Rail E-Learning - Formation Ferroviaire" />
+    <meta property="og:description" content="Plateforme e-learning moderne pour opérateurs ferroviaires avec IA, quiz interactifs et alertes d'urgence" />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://rail-elearning.com/" />
+    <meta property="twitter:title" content="Rail E-Learning - Formation Ferroviaire" />
+    <meta property="twitter:description" content="Plateforme e-learning moderne pour opérateurs ferroviaires avec IA, quiz interactifs et alertes d'urgence" />
+    <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" />
+    
+    <!-- Preconnect pour les performances -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Polices Google Fonts -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" /></noscript>
+    
+    <!-- DNS Prefetch pour les APIs externes -->
+    <link rel="dns-prefetch" href="//firebase.googleapis.com" />
+    <link rel="dns-prefetch" href="//astra.datastax.com" />
+    <link rel="dns-prefetch" href="//api.langflow.com" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Rail E-Learning",
+      "description": "Plateforme e-learning moderne pour opérateurs ferroviaires",
+      "url": "https://rail-elearning.com",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Rail E-Learning Team"
+      }
+    }
+    </script>
+    
+    <title>Rail E-Learning - Formation Ferroviaire</title>
+  </head>
+  <body>
+    <noscript>
+      <div style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+        <h1>Rail E-Learning</h1>
+        <p>Vous devez activer JavaScript pour utiliser cette application.</p>
+        <p>Please enable JavaScript to use this application.</p>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    
+    <!-- Loading spinner -->
+    <div id="loading-spinner" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease-out;
+    ">
+      <div style="
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      "></div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
+    
+    <!-- Script pour masquer le spinner -->
+    <script>
+      window.addEventListener('load', function() {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner) {
+          spinner.style.opacity = '0';
+          setTimeout(() => {
+            spinner.style.display = 'none';
+          }, 300);
+        }
+      });
+      
+      // Masquer le spinner si l'app se charge rapidement
+      setTimeout(function() {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner && spinner.style.display !== 'none') {
+          spinner.style.opacity = '0';
+          setTimeout(() => {
+            spinner.style.display = 'none';
+          }, 300);
+        }
+      }, 3000);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+    
+    <!-- Analytics (optionnel) -->
+    <script>
+      // Google Analytics ou autre service d'analytics
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'GA_MEASUREMENT_ID'); // Remplacer par votre ID
+    </script>
+    
+    <!-- Scripts externes -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+  </body>
+</html> 

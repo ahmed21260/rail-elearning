@@ -1,0 +1,324 @@
+name: Déploiement Firebase
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+jobs:
+  # Job de test et build
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Installation des dépendances
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Vérification du linting
+      run: |
+        cd frontend
+        npm run lint
+        
+    - name: Exécution des tests
+      run: |
+        cd frontend
+        npm test -- --watchAll=false --coverage
+        
+    - name: Build de production
+      run: |
+        cd frontend
+        npm run build
+      env:
+        REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+        REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+        REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+        REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+        REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+        REACT_APP_ASTRA_DB_ID: ${{ secrets.REACT_APP_ASTRA_DB_ID }}
+        REACT_APP_ASTRA_DB_REGION: ${{ secrets.REACT_APP_ASTRA_DB_REGION }}
+        REACT_APP_ASTRA_DB_KEYSPACE: ${{ secrets.REACT_APP_ASTRA_DB_KEYSPACE }}
+        REACT_APP_ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.REACT_APP_ASTRA_DB_APPLICATION_TOKEN }}
+        REACT_APP_LANGFLOW_API_URL: ${{ secrets.REACT_APP_LANGFLOW_API_URL }}
+        
+    - name: Upload des artefacts de build
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: frontend/build/
+        
+    - name: Analyse de la taille du bundle
+      run: |
+        cd frontend
+        npm run analyze
+        
+  # Job de déploiement sur staging (branche develop)
+  deploy-staging:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Téléchargement des artefacts de build
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files
+        path: frontend/build/
+        
+    - name: Configuration Firebase CLI
+      uses: w9jds/firebase-action@master
+      with:
+        args: deploy --only hosting:staging
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        
+    - name: Notification Slack - Staging
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        text: '🚀 Déploiement staging réussi - Rail E-Learning'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+  # Job de déploiement sur production (branche main)
+  deploy-production:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Téléchargement des artefacts de build
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files
+        path: frontend/build/
+        
+    - name: Configuration Firebase CLI
+      uses: w9jds/firebase-action@master
+      with:
+        args: deploy --only hosting:production
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        
+    - name: Notification Slack - Production
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        text: '🎉 Déploiement production réussi - Rail E-Learning'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+    - name: Création d'un tag de version
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag -a v$(date +'%Y.%m.%d.%H%M') -m "Release $(date +'%Y-%m-%d %H:%M:%S')"
+        git push origin --tags
+        
+  # Job de tests de sécurité
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Installation des dépendances
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Audit de sécurité npm
+      run: |
+        cd frontend
+        npm audit --audit-level moderate
+        
+    - name: Scan de vulnérabilités avec Snyk
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        
+  # Job de tests de performance
+  performance-test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Installation des dépendances
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Build de production
+      run: |
+        cd frontend
+        npm run build
+      env:
+        REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+        REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+        REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+        REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+        REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+        
+    - name: Test de performance avec Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        configPath: './frontend/.lighthouserc.json'
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+        
+  # Job de déploiement des fonctions Firebase
+  deploy-functions:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Installation des dépendances backend
+      run: |
+        cd backend
+        npm ci
+        
+    - name: Déploiement des fonctions Firebase
+      uses: w9jds/firebase-action@master
+      with:
+        args: deploy --only functions
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        
+  # Job de tests d'intégration
+  integration-test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Installation des dépendances
+      run: |
+        cd frontend
+        npm ci
+        cd ../backend
+        npm ci
+        
+    - name: Tests d'intégration
+      run: |
+        cd backend
+        npm run test:integration
+      env:
+        ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
+        ASTRA_DB_REGION: ${{ secrets.ASTRA_DB_REGION }}
+        ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
+        ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+        
+  # Job de documentation
+  generate-docs:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Installation des dépendances
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Génération de la documentation
+      run: |
+        cd frontend
+        npm run docs:generate
+        
+    - name: Upload de la documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: frontend/docs/
+        
+  # Job de notification finale
+  notify-completion:
+    needs: [deploy-production, security-scan, performance-test, deploy-functions, integration-test, generate-docs]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notification de completion
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          🚀 Pipeline de déploiement terminé
+          - Production: ${{ needs.deploy-production.result }}
+          - Sécurité: ${{ needs.security-scan.result }}
+          - Performance: ${{ needs.performance-test.result }}
+          - Fonctions: ${{ needs.deploy-functions.result }}
+          - Intégration: ${{ needs.integration-test.result }}
+          - Documentation: ${{ needs.generate-docs.result }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
