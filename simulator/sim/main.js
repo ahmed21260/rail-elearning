@@ -124,9 +124,26 @@ async function loadHDR(url) {
 async function loadModel(src) {
   const loader = new GLTFLoader();
   if (typeof src === "string") return loader.loadAsync(src);
-  const [json, bin] = await Promise.all([fetch(src.json).then((r) => r.text()), fetchB64(src.bin)]);
-  loader.register(() => ({ name: "preloaded_buffer", loadBuffer: (i) => (i === 0 ? Promise.resolve(bin) : null) }));
-  return new Promise((ok, ko) => loader.parse(json, src.json.slice(0, src.json.lastIndexOf("/") + 1), ok, ko));
+  const [json, bin] = await Promise.all([fetch(src.json).then((r) => r.json()), fetchB64(src.bin)]);
+  // Conteneur GLB assemblé en mémoire : le chargeur ne consulte pas les plugins pour les tampons
+  const j = { ...json, buffers: [{ byteLength: bin.byteLength }] };
+  const enc = new TextEncoder().encode(JSON.stringify(j));
+  const jl = Math.ceil(enc.length / 4) * 4;
+  const bl = Math.ceil(bin.byteLength / 4) * 4;
+  const glb = new ArrayBuffer(28 + jl + bl);
+  const v = new DataView(glb);
+  const u8 = new Uint8Array(glb);
+  v.setUint32(0, 0x46546c67, true);
+  v.setUint32(4, 2, true);
+  v.setUint32(8, glb.byteLength, true);
+  v.setUint32(12, jl, true);
+  v.setUint32(16, 0x4e4f534a, true);
+  u8.fill(0x20, 20, 20 + jl);
+  u8.set(enc, 20);
+  v.setUint32(20 + jl, bl, true);
+  v.setUint32(24 + jl, 0x004e4942, true);
+  u8.set(new Uint8Array(bin), 28 + jl);
+  return new Promise((ok, ko) => loader.parse(glb, src.json.slice(0, src.json.lastIndexOf("/") + 1), ok, ko));
 }
 const ASSET = window.SIM_ASSETS || { hdr: `assets/hdri/${HDRI}_2k.hdr`, model: (n) => `assets/models/${n}/${n}.gltf` };
 

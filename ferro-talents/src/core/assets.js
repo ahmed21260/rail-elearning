@@ -26,6 +26,28 @@ export function tex(path, { srgb = true, repeat = 1, aniso = 8 } = {}) {
 }
 export const texturesReady = () => Promise.all(pending);
 
+/** Assemble un conteneur GLB en mémoire (JSON + tampon binaire) : aucun fichier .bin à servir. */
+function toGLB(json, bin) {
+  const j = { ...json, buffers: [{ byteLength: bin.byteLength }] };
+  const enc = new TextEncoder().encode(JSON.stringify(j));
+  const jl = Math.ceil(enc.length / 4) * 4;
+  const bl = Math.ceil(bin.byteLength / 4) * 4;
+  const out = new ArrayBuffer(12 + 8 + jl + 8 + bl);
+  const v = new DataView(out);
+  const u8 = new Uint8Array(out);
+  v.setUint32(0, 0x46546c67, true); // « glTF »
+  v.setUint32(4, 2, true);
+  v.setUint32(8, out.byteLength, true);
+  v.setUint32(12, jl, true);
+  v.setUint32(16, 0x4e4f534a, true); // « JSON »
+  u8.fill(0x20, 20, 20 + jl);
+  u8.set(enc, 20);
+  v.setUint32(20 + jl, bl, true);
+  v.setUint32(24 + jl, 0x004e4942, true); // « BIN »
+  u8.set(new Uint8Array(bin), 28 + jl);
+  return out;
+}
+
 const fetchB64 = async (url) => Uint8Array.from(atob((await (await fetch(url)).text()).trim()), (c) => c.charCodeAt(0)).buffer;
 
 export async function loadHDR(id) {
@@ -48,9 +70,8 @@ export async function loadModel(id) {
   }
   const dir = `${BASE}/models/${id}/`;
   if (!CFG) return loader.loadAsync(`${dir}${id}.gltf`);
-  const [json, bin] = await Promise.all([fetch(`${dir}${id}.gltf.json`).then((r) => r.text()), fetchB64(`${dir}${id}.bin.b64.txt`)]);
-  loader.register(() => ({ name: "preloaded_buffer", loadBuffer: (i) => (i === 0 ? Promise.resolve(bin) : null) }));
-  return new Promise((ok, ko) => loader.parse(json, dir, ok, ko));
+  const [json, bin] = await Promise.all([fetch(`${dir}${id}.gltf.json`).then((r) => r.json()), fetchB64(`${dir}${id}.bin.b64.txt`)]);
+  return new Promise((ok, ko) => loader.parse(toGLB(json, bin), dir, ok, ko));
 }
 
 export function loadImage(url) {

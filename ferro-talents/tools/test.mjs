@@ -11,7 +11,9 @@ let pw;
 for (const p of ["playwright", "/opt/node22/lib/node_modules/playwright"]) {
   try { pw = require(p); break; } catch {}
 }
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ftRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// DIST=1 : teste la version publiable (dist/), CDN three.js redirigé vers la copie locale
+const root = process.env.DIST ? path.join(ftRoot, "dist") : ftRoot;
 const args = process.argv.slice(2);
 const out = args.find((a) => !a.startsWith("--"));
 const only = (args.find((a) => a.startsWith("--only="))?.slice(7) || "train,pelle,nacelle").split(",");
@@ -28,6 +30,13 @@ const url = `http://localhost:${server.address().port}/index.html?q=${process.en
 const browser = await pw.chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 const errors = [];
+if (process.env.DIST) {
+  await page.route("https://cdn.jsdelivr.net/npm/three@0.181.2/**", (route) => {
+    const u = new URL(route.request().url()).pathname.replace("/npm/three@0.181.2/", "");
+    const f = path.join(ftRoot, "vendor/three", u.replace(/^build\//, "").replace(/^examples\/jsm\//, "addons/"));
+    route.fulfill({ path: f, contentType: "text/javascript" });
+  });
+}
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 page.on("response", (r) => r.status() >= 400 && errors.push(`${r.status()} ${r.url()}`));
