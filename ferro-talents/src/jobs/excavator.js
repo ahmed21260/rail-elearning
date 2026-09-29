@@ -19,7 +19,7 @@ export const EXC_JOB = {
     "Serre le frein de parc (B) et passe en mode travail (T).",
     "Retire le ballast pollué des 4 repères et vide chaque godet dans la benne verte.",
     "La voie 2 reste en circulation : ne franchis jamais son gabarit avec la flèche ou le contrepoids.",
-    "Termine en position transport (godet replié, flèche basse), frein desserré.",
+    "Termine en position transport (tourelle dans l'axe, godet replié, flèche basse), frein desserré.",
   ],
   keys: "Translation : ↑↓ avancer/reculer · ←→ direction · Travail (T) : A/D rotation · W/S balancier · I/K flèche · J/L godet · M moteur · V enrailler · B frein de parc · C caméra",
   skills: ["Conduite d'engins de précision", "Lecture d'un plan de chantier", "Règles de sécurité ferroviaire (gabarit, caténaire)", "Travail en équipe avec l'agent de protection"],
@@ -251,7 +251,7 @@ export function createExcavatorJob(ctx) {
           }
         }
       }
-      if (m.is("transport") && top < 3.2 && ex.joints.bucket > 0.6 && !rr.brake) m.done("transport");
+      if (m.is("transport") && top < 3.2 && ex.joints.bucket > 0.6 && Math.abs(ex.joints.swing) < 0.09 && !rr.brake) m.done("transport");
       // Gyrophare
       ex.beacon.material.emissiveIntensity = st.engine ? (Math.sin(m.st.t * 12) > 0 ? 6 : 0.2) : 0;
       audio.machine(st.engine ? 0.35 + 0.5 * Math.min(1, Math.abs(rr.v) / 5 + Object.values(cmd).reduce((a, v) => a + Math.abs(v || 0), 0) * 0.3) : 0, Object.values(cmd).reduce((a, v) => a + Math.abs(v || 0), 0) / 2, Math.abs(rr.v));
@@ -291,7 +291,7 @@ export function createExcavatorJob(ctx) {
       else if (m.is("chantier")) tip = "Circule jusqu'au chantier balisé (cônes) et arrête-toi au droit des repères orange.";
       else if (m.is("frein")) tip = "Serre le frein de parc (B), puis passe en mode travail (T).";
       else if (m.is("degarnir")) tip = st.trainS !== null ? "Circulation annoncée : ramène la flèche côté voie 1, hors du gabarit rouge !" : st.loaded ? "Pivote vers la benne verte (A/D), lève (I) et vide le godet (L)." : "Descends le godet dans un repère orange (I/K, W/S) et referme-le (J) pour charger.";
-      else if (m.is("transport")) tip = "Position transport : godet replié (J), flèche basse (K), point haut sous 3,2 m, puis desserre le frein (B).";
+      else if (m.is("transport")) tip = "Position transport : tourelle dans l'axe (A/D), godet replié (J), flèche basse (K), point haut sous 3,2 m, puis quitte le mode travail (T) et desserre le frein (B).";
       ui.tip(ctx.guided && tip ? { tone: st.gauge ? "red" : "blue", text: tip } : null);
     },
     camera(dt, rig) {
