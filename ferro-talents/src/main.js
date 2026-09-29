@@ -37,6 +37,7 @@ const store = {
   },
 };
 const coarse = matchMedia("(pointer: coarse)").matches;
+const NO_RENDER = params.has("norender"); // audits de charge sans GPU (tools/audit.mjs)
 const quality = params.get("q") || store.get("quality", coarse ? "low" : "high");
 let guided = store.get("guided", true);
 
@@ -527,7 +528,7 @@ function loop() {
   }
   camera.updateProjectionMatrix();
   world.veg.update(camera.position);
-  core.render();
+  if (!NO_RENDER) core.render();
   input.endFrame();
   frames++;
   fpsT += dt;

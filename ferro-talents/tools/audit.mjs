@@ -24,7 +24,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => (m.type() === "error" || m.type() === "warning") && errors.push(`${m.type()}: ${m.text()}`));
-await page.goto(`http://localhost:${server.address().port}/index.html?q=${process.env.Q || "high"}`);
+await page.goto(`http://localhost:${server.address().port}/index.html?q=${process.env.Q || "high"}${process.env.NORENDER ? "&norender" : ""}`);
 await page.waitForFunction(() => window.__ft?.world, null, { timeout: 900000, polling: 1000 });
 await page.evaluate(() => window.__ft.store.set("welcomed", true));
 
@@ -37,6 +37,20 @@ const frameStats = () => page.evaluate(() => {
   r.info.autoReset = false; r.info.reset(); F.core.render(); r.info.autoReset = true;
   const i = r.info;
   return { calls: i.render.calls, tris: i.render.triangles, geos: i.memory.geometries, texs: i.memory.textures, progs: i.programs.length, heapMB: Math.round((performance.memory?.usedJSHeapSize || 0) / 1e6) };
+});
+
+// Charge estimée sans rendu : triangles des objets visibles après le LOD (borne haute, sans culling)
+const loadEstimate = () => page.evaluate(() => {
+  const F = window.__ft; F.world.veg.update(F.camera.position);
+  let tris = 0, inst = 0, meshes = 0, shadowTris = 0;
+  F.world.scene.traverse((o) => {
+    if (!o.isMesh || !o.visible) return;
+    let p = o.parent; while (p) { if (!p.visible) return; p = p.parent; }
+    const g = o.geometry; const t = (g.index ? g.index.count : g.attributes.position.count) / 3;
+    const n = o.isInstancedMesh ? o.count : 1;
+    tris += t * n; meshes++; if (o.isInstancedMesh) inst += n; if (o.castShadow) shadowTris += t * n;
+  });
+  return { trisM: +(tris / 1e6).toFixed(2), shadowTrisM: +(shadowTris / 1e6).toFixed(2), meshes, instances: inst };
 });
 
 // Saturation des couleurs mesurée sur l'image rendue (canvas WebGL, zone 3D uniquement)
@@ -92,19 +106,23 @@ const table = [];
 for (const [name, fn] of Object.entries(views)) {
   await page.evaluate(`(${fn.toString()})()`);
   await page.evaluate(() => window.__ft.job?.update(0.05));
-  const fs_ = await frameStats();
-  const cs = await colorStats(name);
-  table.push({ vue: name, ...fs_, ...cs });
-  await shot(`audit-${name}`);
+  const le = await loadEstimate();
+  const fs_ = process.env.NORENDER ? {} : await frameStats();
+  const cs = process.env.NORENDER ? {} : await colorStats(name);
+  table.push({ vue: name, ...le, ...fs_, ...cs });
+  if (!process.env.NORENDER) await shot(`audit-${name}`);
 }
 console.table(table);
 for (const r of table) {
+  check(r.trisM < 12, `${r.vue} : ${r.trisM} M triangles actifs < 12 M (GPU milieu de gamme)`);
+  if (process.env.NORENDER) continue;
   check(r.calls < 2500, `${r.vue} : appels de dessin ${r.calls} < 2500`);
   check(r.sat < 0.42, `${r.vue} : saturation moyenne ${r.sat} < 0,42`);
   check(r.fortementSatures < 12, `${r.vue} : pixels très saturés ${r.fortementSatures} % < 12 %`);
   check(r.brules < 3, `${r.vue} : pixels brûlés ${r.brules} % < 3 %`);
 }
 
+if (!process.env.NORENDER) {
 // 2. Espaces colorimétriques
 const cs = await colorSpaceAudit();
 for (const i of cs.slice(0, 20)) console.log("  ·", i);
@@ -126,6 +144,7 @@ check(after.children <= before.children, `pas d'objets orphelins dans la scène 
 check(after.geos - before.geos < 20, `géométries stables (${before.geos} → ${after.geos})`);
 check(after.texs - before.texs < 5, `textures stables (${before.texs} → ${after.texs})`);
 
+}
 const real = errors.filter((e) => !/GPU stall|ReadPixels|Automatic fallback/i.test(e));
 for (const e of real.slice(0, 10)) console.log("  !", e);
 check(real.length === 0, `aucune erreur ni avertissement console (${real.length})`);
