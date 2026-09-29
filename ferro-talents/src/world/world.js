@@ -5,6 +5,7 @@ import { loadDEM, buildTerrain, dem, worldHalf } from "./terrain.js";
 import { buildTrack, TRACK_LAT } from "./track.js";
 import { declarePads, buildDepot, isFree, DEPOT, ENRAIL } from "./depot.js";
 import { buildVegetation } from "./vegetation.js";
+import { buildDecor } from "./decor.js";
 import { buildSignal } from "./signal.js";
 import { BASE, loadJSON, loadHDR, loadImage, loadModel, texturesReady } from "../core/assets.js";
 import { setupSky } from "../core/renderer.js";
@@ -13,6 +14,9 @@ import { buildExcavator } from "../vehicles/excavator.js";
 import { buildNacelle } from "../vehicles/nacelle.js";
 import { buildWorker } from "../vehicles/worker.js";
 import { SIGNALS, TIV, TRAIN_START } from "../jobs/train-rules.js";
+
+// Modèles Sketchfab (tools/sketchfab.py, crédits dans assets/SKETCHFAB.md) : optionnels
+const SF_DECOR = ["gare_kehl", "maison_troyes_8", "maison_troyes_2", "maison_troyes_f1", "maison_angers_1", "conteneurs"];
 
 const MODELS = [
   "shrub_02", "grass_medium_02", "fern_02", "celandine_01", "rock_moss_set_01", "tree_stump_01",
@@ -84,14 +88,19 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   progress("Tracé de la ligne et relief réel…", 0.05);
   initLine(await loadJSON("data/line.json"));
   await loadDEM(`${BASE}/dem`);
-  const [hdr, bgImg, workerGltf, ...mods] = await Promise.all([
+  const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch(() => null)));
+  const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),
     loadImage(`${BASE}/hdri/kloofendal_48d_partly_cloudy_puresky_bg.jpg`),
     loadModel("worker.glb"),
+    loadModel("sf/pelle_atek.glb").catch(() => null), // pelle réaliste (Sketchfab), sinon version procédurale
+    loadModel("sf/epicea.glb").catch(() => null), // arbres réalistes (Sketchfab), sinon arbres procéduraux
+    loadModel("sf/hetre.glb").catch(() => null),
     ...MODELS.map((m) => loadModel(m)),
     document.fonts.load("800 120px Inter"),
   ]);
   const models = Object.fromEntries(MODELS.map((m, i) => [m, mods[i]]));
+  const sfd = await sfDecor;
 
   progress("Ciel et lumière…", 0.2);
   const f = frame(lineLength() / 2);
@@ -109,12 +118,13 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   const cat = buildTrack(scene, { quality, skipMasts });
   progress("Base travaux et gare…", 0.55);
   const depot = buildDepot(scene, models);
+  const decor = buildDecor(scene, Object.fromEntries(SF_DECOR.map((n, i) => [n, sfd[i]])));
   trackSign(scene, TIV.from - 700, `${TIV.limit / 10}`, "#ffc21a", "#111"); // annonce (chiffre des dizaines)
   trackSign(scene, TIV.from, "Z", "#ffc21a", "#111");
   trackSign(scene, TIV.to + 50, "R", "#ffc21a", "#111");
 
   progress("Forêts, prairies et haies…", 0.65);
-  const veg = await buildVegetation(core.renderer, scene, { quality, models, isFree });
+  const veg = await buildVegetation(core.renderer, scene, { quality, models, trees: { epicea, hetre }, isFree });
 
   progress("Signaux et engins…", 0.85);
   const signals = Object.fromEntries(SIGNALS.map((d) => [d.id, { api: buildSignal(scene, { s: d.s, lat: TRACK_LAT - 2.8, label: d.label, lamps: {} }), lit: {} }]));
@@ -124,7 +134,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   train.lights = false;
   const other = buildTrain(scene);
   other.visible = false;
-  const exc = buildExcavator(scene);
+  const exc = buildExcavator(scene, excGltf);
   const nac = buildNacelle(scene);
   const park = (rr, s, lat) => {
     const p = P(s, lat);
@@ -145,5 +155,5 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   await texturesReady();
   progress("Compilation des shaders…", 0.95);
   core.renderer.compile(scene, new THREE.PerspectiveCamera());
-  return { models, cat, depot, veg, signals, train, other, exc, nac, avatar, chef, spawn, DEPOT };
+  return { models, cat, depot, decor, veg, signals, train, other, exc, nac, avatar, chef, spawn, DEPOT };
 }

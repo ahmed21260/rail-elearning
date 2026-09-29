@@ -302,7 +302,58 @@ function makeImpostor(renderer, meshes, height, size = 256) {
 
 // ------------------------------------------------------------------------------------
 /** Construit toute la végétation. Retourne { update(cameraPos) } pour le LOD et l'herbe. */
-export async function buildVegetation(renderer, scene, { quality, models, isFree }) {
+/** Fusion tolérante : mêmes attributs et même indexation pour toutes les géométries. */
+function mergeSafe(geos) {
+  if (geos.length === 1) return geos[0];
+  const common = ["position", "normal", "uv"].filter((a) => geos.every((g) => g.attributes[a]));
+  const indexed = geos.every((g) => g.index);
+  const list = geos.map((g0) => {
+    const g = indexed ? g0 : g0.index ? g0.toNonIndexed() : g0;
+    for (const a of Object.keys(g.attributes)) if (!common.includes(a)) g.deleteAttribute(a);
+    return g;
+  });
+  return mergeGeometries(list, false);
+}
+
+/**
+ * Essence à partir d'un modèle glTF : pièces fusionnées par matériau, hauteur normalisée, pied à y = 0,
+ * vent ajouté, teinte légère (varie selon l'essence).
+ */
+function treeFromModel(kind, gltf, height, tint) {
+  const root = gltf.scene;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const k = height / (box.max.y - box.min.y);
+  const c = box.getCenter(new THREE.Vector3());
+  const norm = new THREE.Matrix4().makeScale(k, k, k).multiply(new THREE.Matrix4().makeTranslation(-c.x, -box.min.y, -c.z));
+  const byMat = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(norm, o.matrixWorld));
+    for (const a of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(a)) g.deleteAttribute(a);
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(g);
+  });
+  const parts = [];
+  for (const [mat0, geos] of byMat) {
+    const leafy = !!(mat0.alphaTest || mat0.transparent || mat0.alphaMap || /leaf|leav|needle|branch|folia|spruce|pine/i.test(mat0.name));
+    const mat = mat0.clone();
+    mat.transparent = false;
+    if (leafy) {
+      mat.alphaTest = Math.max(mat.alphaTest || 0, 0.5);
+      mat.side = THREE.DoubleSide;
+    }
+    mat.color.multiply(new THREE.Color(...tint));
+    mat.roughness = Math.max(mat.roughness ?? 0.8, 0.75);
+    mat.metalness = 0;
+    addWind(mat, leafy ? { amp: 0.018, heightRef: height, flutter: 0.03 } : { amp: 0.01, heightRef: height });
+    parts.push({ geometry: mergeSafe(geos), material: mat, cast: true });
+  }
+  return { kind, parts, height };
+}
+
+export async function buildVegetation(renderer, scene, { quality, models, trees, isFree }) {
   const atlas = await leafAtlas();
   const barkMat = new THREE.MeshStandardMaterial({
     map: tex("bark_brown_02/Diffuse.jpg"),
@@ -324,26 +375,30 @@ export async function buildVegetation(renderer, scene, { quality, models, isFree
   );
   const needleMat = addWind(new THREE.MeshStandardMaterial({ map: needleTexture(7), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 }), { amp: 0.012, heightRef: 18 });
 
-  // Variantes
+  // Variantes : arbres scannés/modélisés (Sketchfab) si disponibles, sinon arbres procéduraux
   const species = [];
-  for (let k = 0; k < 4; k++) {
+  const real = { broad: trees?.hetre, fir: trees?.epicea };
+  if (real.broad) for (const [k, h] of [[0, 19], [1, 15], [2, 22]]) species.push(treeFromModel("broad", real.broad, h, [[1, 1, 1], [0.94, 1.02, 0.9], [1.04, 1.0, 0.92]][k]));
+  else for (let k = 0; k < 4; k++) {
     const t = broadleaf(31 + k * 17);
-    species.push({ kind: "broad", wood: t.wood, leaves: t.leaves, leafMat: leafMats[k % 3], height: t.height });
+    species.push({ kind: "broad", parts: [{ geometry: t.wood, material: barkMat, cast: true }, { geometry: t.leaves, material: leafMats[k % 3], cast: true }], height: t.height });
   }
-  for (let k = 0; k < 3; k++) {
+  if (real.fir) for (const [k, h] of [[0, 22], [1, 17], [2, 26]]) species.push(treeFromModel("fir", real.fir, h, [[1, 1, 1], [0.92, 0.98, 0.95], [1.02, 1.04, 0.98]][k]));
+  else for (let k = 0; k < 3; k++) {
     const t = fir(211 + k * 13);
-    species.push({ kind: "fir", wood: t.wood, leaves: t.leaves, leafMat: needleMat, height: t.height });
+    species.push({ kind: "fir", parts: [{ geometry: t.wood, material: barkMat, cast: true }, { geometry: t.leaves, material: needleMat, cast: true }], height: t.height });
   }
-  for (const sp of species) {
-    sp.imp = makeImpostor(renderer, [new THREE.Mesh(sp.wood, barkMat), new THREE.Mesh(sp.leaves, sp.leafMat)], sp.height);
-  }
+  for (const sp of species) sp.imp = makeImpostor(renderer, sp.parts.map((p) => new THREE.Mesh(p.geometry, p.material)), sp.height);
+  const broadIdx = species.flatMap((sp, i) => (sp.kind === "broad" ? [i] : []));
+  const firIdx = species.flatMap((sp, i) => (sp.kind === "fir" ? [i] : []));
 
   // Répartition : forêts des coteaux (sapins en altitude), haies de parcelles, arbres isolés
   const r = rng(2024);
   const len = lineLength();
   const items = species.map(() => []);
   const add = (x, z, fir, scale = 1) => {
-    const k = fir ? 4 + Math.floor(r() * 3) : Math.floor(r() * 4);
+    const pool = fir ? firIdx : broadIdx;
+    const k = pool[Math.floor(r() * pool.length)];
     const y = groundHeight(x, z) - 0.2;
     const s = scale * (0.75 + r() * 0.5);
     const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * 6.28), new THREE.Vector3(s, s * (0.9 + r() * 0.2), s));
@@ -371,9 +426,11 @@ export async function buildVegetation(renderer, scene, { quality, models, isFree
   }
 
   // LOD : par cellule, arbres 3D près de la caméra, imposteurs au loin
-  const CELL = 160;
+  // Arbres réalistes (≈ 7 000 triangles) : cellules plus fines et 3D complète seulement à proximité
+  const detailed = !!(real.broad || real.fir);
+  const CELL = detailed ? 80 : 160;
   const cells = new Map();
-  const near = quality === "low" ? 0 : 230;
+  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 160 : 100) : 230;
   species.forEach((sp, k) => {
     const byCell = new Map();
     for (const it of items[k]) {
@@ -400,9 +457,7 @@ export async function buildVegetation(renderer, scene, { quality, models, isFree
         scene.add(im);
         return im;
       };
-      if (near) {
-        cell.full.push(mk(sp.wood, barkMat, true), mk(sp.leaves, sp.leafMat, true));
-      }
+      if (near) for (const p of sp.parts) cell.full.push(mk(p.geometry, p.material, p.cast));
       cell.far.push(mk(sp.imp.geometry, sp.imp.material, false));
       cell.center.y = list[0].m.elements[13];
     }

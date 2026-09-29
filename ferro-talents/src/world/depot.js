@@ -21,8 +21,12 @@ export function declarePads() {
 
 const inRect = (p, r, m = 0) => p.s > r.s0 - m && p.s < r.s1 + m && p.lat > r.l0 - m && p.lat < r.l1 + m;
 
-/** Faux si la végétation ne doit pas pousser ici (voie, base, gare…). */
+/** Emprises réservées par le décor bâti (disques { x, z, r }), voir decor.js. */
+export const blockers = [];
+
+/** Faux si la végétation ne doit pas pousser ici (voie, base, gare, bâtiments…). */
 export function isFree(x, z, grass = false) {
+  for (const b of blockers) if ((x - b.x) ** 2 + (z - b.z) ** 2 < b.r * b.r) return false;
   const p = project(x, z, 100);
   if (p.d > 95) return true;
   if (Math.abs(p.lat) < (grass ? 6.4 : 7.4) && p.s > -260 && p.s < lineLength() + 260) return false;

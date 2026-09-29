@@ -1,6 +1,7 @@
 // Pelle rail-route (type pelle sur pneus avec galets de guidage) : tourelle, flèche, balancier, godet.
 import * as THREE from "three";
 import { MAT, box, cyl, wheel, ram, hazardMat, RoadRail } from "./roadrail.js";
+import { buildFromModel } from "./excavator-model.js";
 
 export const EXC = {
   boomLen: 5.4,
@@ -25,7 +26,8 @@ function bucketGeometry() {
   return g;
 }
 
-export function buildExcavator(scene) {
+export function buildExcavator(scene, gltf = null) {
+  if (gltf) return buildFromModel(scene, gltf);
   const root = new THREE.Group();
   const hz = hazardMat();
   // Châssis porteur

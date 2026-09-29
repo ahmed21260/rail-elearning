@@ -210,7 +210,18 @@ function resetVehicles() {
   world.train.visible = true;
 }
 
+/** Quitte proprement le métier en cours (interface, objets de scène, sons, engins). */
+function leaveJob() {
+  if (!job) return;
+  job.exit();
+  job = null;
+  core.inset = null;
+  audio.silence();
+  resetVehicles();
+}
+
 function showHub() {
+  leaveJob();
   state = "hub";
   for (const id of ["brief", "debrief", "loading", "caught", "cine", "talk", "danger"]) $(id).hidden = true;
   $("hub").hidden = false;
@@ -296,6 +307,7 @@ function showBrief(entry) {
 }
 
 function startIntro() {
+  leaveJob();
   audio.start();
   state = "intro";
   for (const id of ["hub", "brief", "debrief", "caught"]) $(id).hidden = true;
@@ -320,6 +332,7 @@ function startIntro() {
 
 function enterWorld(near, afterIntro = false) {
   if (!near && !afterIntro && !store.get("welcomed", false)) return startIntro();
+  leaveJob();
   audio.start();
   state = "world";
   for (const id of ["hub", "brief", "debrief", "caught", "cine", "talk"]) $(id).hidden = true;
@@ -346,6 +359,7 @@ function enterWorld(near, afterIntro = false) {
 }
 
 function startJob(entry) {
+  leaveJob();
   audio.start();
   resetVehicles();
   $("brief").hidden = true;
@@ -406,11 +420,7 @@ $("debrief-retry").addEventListener("click", () => showBrief(jobEntry));
 $("debrief-world").addEventListener("click", () => enterWorld(vehicleSpots().find((v) => v.job === jobEntry).pos));
 $("debrief-hub").addEventListener("click", showHub);
 $("menu-btn").addEventListener("click", () => {
-  if (job) {
-    job.exit();
-    job = null;
-    resetVehicles();
-  }
+  leaveJob();
   audio.silence();
   showHub();
 });

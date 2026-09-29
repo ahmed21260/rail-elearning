@@ -38,7 +38,12 @@ def copy_jpg(src, dst):
 
 for p in (A / "textures").rglob("*.jpg"):
     copy_jpg(p, D / "textures" / p.relative_to(A / "textures"))
+for glb in (A / "models" / "sf").glob("*.glb") if (A / "models" / "sf").exists() else []:
+    (D / "models" / "sf").mkdir(parents=True, exist_ok=True)
+    (D / "models" / "sf" / f"{glb.name}.b64.txt").write_text(base64.b64encode(glb.read_bytes()).decode())
 for mdir in (A / "models").iterdir():
+    if mdir.name == "sf":
+        continue
     if mdir.suffix == ".glb":
         (D / "models").mkdir(parents=True, exist_ok=True)
         (D / "models" / f"{mdir.name}.b64.txt").write_text(base64.b64encode(mdir.read_bytes()).decode())
@@ -52,6 +57,8 @@ for mdir in (A / "models").iterdir():
     (out / f"{mdir.name}.bin.b64.txt").write_text(base64.b64encode((mdir / g["buffers"][0]["uri"]).read_bytes()).decode())
     (out / f"{mdir.name}.gltf.json").write_text(json.dumps(g))
 shutil.copy(A / "ASSETS.md", D / "ASSETS.md")
+if (A / "SKETCHFAB.md").exists():
+    shutil.copy(A / "SKETCHFAB.md", D / "SKETCHFAB.md")
 
 html = (FT / "index.html").read_text()
 head = re.search(r"<head>(.*?)</head>", html, re.S).group(1)

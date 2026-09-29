@@ -1,0 +1,11 @@
+[
+  { "name": "pelle_atek", "uid": "3ed31d7a62204f758d7c8bbf519ac4e5", "role": "Pelle sur pneus articulée (base de la pelle rail-route)" },
+  { "name": "epicea", "uid": "a50a5df3164246a5af97992cec33a143", "role": "Épicéas des forêts de coteau" },
+  { "name": "hetre", "uid": "0983d8933531491f9be71c669e8a907b", "role": "Hêtres et feuillus" },
+  { "name": "gare_kehl", "uid": "2540d3e84572446ca18a85c02d4b6380", "role": "Bâtiment voyageurs de la gare de Valbruche" },
+  { "name": "maison_troyes_8", "uid": "cf3825e1799e4b22af58f4938879d588", "role": "Maison du village" },
+  { "name": "maison_troyes_2", "uid": "6e96ac918e9e4bbaa78744d19883c1a7", "role": "Maison du village" },
+  { "name": "maison_troyes_f1", "uid": "6ae88d504b2d464ab48e4b417d9c0d83", "role": "Maison du village" },
+  { "name": "maison_angers_1", "uid": "ec891e10fe26403aa072173bb89861bb", "role": "Maison du village" },
+  { "name": "conteneurs", "uid": "a537de2f9e1046e2a19178daf5710b66", "role": "Conteneurs de la base travaux" }
+]

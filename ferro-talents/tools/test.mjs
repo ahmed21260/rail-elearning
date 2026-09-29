@@ -109,6 +109,7 @@ if (!loadErr) {
     page.evaluate(
       ({ id, fnSrc, steps }) => {
         const F = window.__ft;
+        try {
         F.startJob(id);
         const J = F.job;
         const drive = new Function("J", "key", "tick", fnSrc);
@@ -127,6 +128,7 @@ if (!loadErr) {
         for (const k of held) key(k, false);
         const m = J.mission.st;
         return { dbg: J.debugInfo?.(), target: J._target, status: m.status, score: m.score, step: J.mission.current?.id || "fin", penalties: m.penalties.map((p) => p.text), fail: m.failReason, t: Math.round(m.t) };
+        } catch (e) { return { status: "exception", error: e.stack }; }
       },
       { id, fnSrc, steps },
     );

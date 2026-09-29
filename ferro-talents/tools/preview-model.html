@@ -1,0 +1,21 @@
+<!doctype html><html><body style="margin:0">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module">
+// Aperçu d'un modèle : ?f=sf/atek.glb — 4 vues, cotes et liste des nœuds dans window.info
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+const f=new URLSearchParams(location.search).get("f");
+const W=1400,H=800; const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); document.body.appendChild(r.domElement);
+r.toneMapping=THREE.ACESFilmicToneMapping; r.setScissorTest(true);
+const s=new THREE.Scene(); s.background=new THREE.Color(0xdfe4ea); s.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment()).texture;
+const d=new THREE.DirectionalLight(0xffffff,2); d.position.set(5,10,7); s.add(d);
+const g=await new GLTFLoader().loadAsync("../assets/models/"+f); s.add(g.scene);
+const box=new THREE.Box3().setFromObject(g.scene); const size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
+const R=size.length()*0.62;
+const views=[[1,0.35,1],[1,0,0],[0,1,0.0001],[-1,0.4,-1]];
+views.forEach((v,i)=>{const cam=new THREE.PerspectiveCamera(35,(W/2)/(H/2),R/100,R*20); const dir=new THREE.Vector3(...v).normalize(); cam.position.copy(c).addScaledVector(dir,R*1.9); cam.lookAt(c);
+ const x=(i%2)*W/2,y=(1-Math.floor(i/2))*H/2; r.setViewport(x,y,W/2,H/2); r.setScissor(x,y,W/2,H/2); r.render(s,cam);});
+const nodes=[]; g.scene.traverse(o=>{ if(o.children.some(ch=>ch.isMesh)){const p=o.getWorldPosition(new THREE.Vector3()); const b=new THREE.Box3().setFromObject(o); nodes.push([o.name, p.toArray().map(v=>+v.toFixed(2)), b.min.toArray().map(v=>+v.toFixed(2)), b.max.toArray().map(v=>+v.toFixed(2))]);} });
+window.info={size:size.toArray().map(v=>+v.toFixed(2)),center:c.toArray().map(v=>+v.toFixed(2)),nodes}; window.done=true;
+</script></body></html>
