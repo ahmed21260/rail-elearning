@@ -103,10 +103,87 @@ function boxBetween(parts, s, p1, p2, t) {
   parts.push(g);
 }
 
+/** Tube rond entre deux points du plan (lat, y) au droit de l'abscisse s. */
+function tubeBetween(parts, s, p1, p2, r, seg = 10) {
+  const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+  const g = new THREE.CylinderGeometry(r, r, len, seg, 1);
+  g.rotateZ(Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) - Math.PI / 2);
+  g.translate((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, 0);
+  const f = frame(s);
+  g.rotateY(-f.th);
+  g.translate(f.x, f.y, f.z);
+  parts.push(g);
+}
+
+/** Isolateur céramique à ailettes (axe local Y), de longueur L. */
+let insulatorGeo = null;
+function insulator(L) {
+  if (!insulatorGeo) {
+    const pts = [new THREE.Vector2(0.001, 0)];
+    const n = 7;
+    for (let i = 0; i < n; i++) {
+      const y = (i + 0.5) / n;
+      pts.push(new THREE.Vector2(0.035, y - 0.45 / n), new THREE.Vector2(0.075, y - 0.1 / n), new THREE.Vector2(0.035, y + 0.3 / n));
+    }
+    pts.push(new THREE.Vector2(0.03, 1), new THREE.Vector2(0.001, 1));
+    insulatorGeo = new THREE.LatheGeometry(pts, 14);
+  }
+  return insulatorGeo.clone().scale(1, L, 1);
+}
+function insulatorBetween(parts, s, p1, p2) {
+  const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+  const g = insulator(len);
+  g.rotateZ(Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) - Math.PI / 2);
+  g.translate(p1[0], p1[1], 0);
+  const f = frame(s);
+  g.rotateY(-f.th);
+  g.translate(f.x, f.y, f.z);
+  parts.push(g);
+}
+
+/** Poteau à treillis (deux membrures en U reliées par un laçage en zigzag), repère local : x = travers, z = long de la voie. */
+let latticeGeo = null;
+function latticeMast() {
+  if (latticeGeo) return latticeGeo;
+  const parts = [];
+  const H = 9.0;
+  const y0 = -0.6;
+  const bar = (x1, y1, z1, x2, y2, z2, w, d) => {
+    const a = new THREE.Vector3(x1, y1, z1);
+    const b = new THREE.Vector3(x2, y2, z2);
+    const len = a.distanceTo(b);
+    const g = new THREE.BoxGeometry(w, len, d);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    g.applyQuaternion(q);
+    g.translate((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
+    parts.push(g);
+  };
+  const half = (y) => 0.2 - 0.07 * ((y - y0) / H); // léger fruit (poteau plus large en pied)
+  for (const sz of [-1, 1]) {
+    // Membrures (profilés en U) de chaque côté, le long de la voie
+    bar(0, y0, sz * half(y0), 0, y0 + H, sz * half(y0 + H), 0.2, 0.05);
+  }
+  // Laçage en zigzag sur les deux faces
+  const step = 0.42;
+  for (const sx of [-1, 1]) {
+    let k = 0;
+    for (let y = y0 + 0.3; y < y0 + H - 0.3; y += step, k++) {
+      const z1 = (k % 2 ? 1 : -1) * half(y);
+      const z2 = -z1 * (half(y + step) / half(y));
+      bar(sx * 0.085, y, z1, sx * 0.085, y + step, z2, 0.025, 0.035);
+    }
+  }
+  // Plaque de tête et semelle
+  bar(0, y0 + H - 0.01, 0, 0, y0 + H + 0.02, 0, 0.26, 0.34);
+  latticeGeo = mergeGeometries(parts);
+  return latticeGeo;
+}
+
 function buildCatenary(scene, skip) {
-  const steel = new THREE.MeshStandardMaterial({ color: 0x8c9196, roughness: 0.55, metalness: 0.75 });
+  // Acier galvanisé (gris clair mat), fils cuivre/bronze patinés, isolateurs porcelaine brune émaillée
+  const steel = new THREE.MeshStandardMaterial({ color: 0xa3a9ad, roughness: 0.62, metalness: 0.7, map: tex("metal_plate/Diffuse.jpg", { repeat: 1 }) });
   const dark = new THREE.MeshStandardMaterial({ color: 0x3b3530, roughness: 0.5, metalness: 0.6 });
-  const insul = new THREE.MeshStandardMaterial({ color: 0x5a3b2a, roughness: 0.35 });
+  const insul = new THREE.MeshStandardMaterial({ color: 0x6a3a22, roughness: 0.22, metalness: 0.05 });
   const concreteM = new THREE.MeshStandardMaterial({ color: 0x9a978f, roughness: 0.95 });
   const chunks = new Map();
   const masts = [];
@@ -122,17 +199,30 @@ function buildCatenary(scene, skip) {
       if (skip.some((f) => f(s, mastLat))) continue;
       const dir = Math.sign(tl - mastLat);
       const parts = [];
-      boxBetween(parts, s, [mastLat, -0.6], [mastLat, 8.4], 0.24);
-      boxBetween(parts, s, [mastLat - dir * 0.12, 8.4], [mastLat + dir * 0.12, 8.4], 0.3);
+      // Poteau à treillis galvanisé, orienté face à la voie
+      const lat = latticeMast().clone();
+      const f0 = frame(s);
+      lat.rotateY(-f0.th);
+      lat.translate(f0.x + f0.rx * mastLat, f0.y, f0.z + f0.rz * mastLat);
+      parts.push(lat);
       const zig = contactLat(s, tl);
-      boxBetween(parts, s, [mastLat, CONTACT_Y + 1.35], [tl + dir * 0.9, CONTACT_Y + 1.35], 0.07);
-      boxBetween(parts, s, [mastLat, CONTACT_Y + 0.25], [zig - dir * 0.05, CONTACT_Y + 0.1], 0.055);
-      boxBetween(parts, s, [mastLat, CONTACT_Y + 0.25], [tl + dir * 0.3, CONTACT_Y + 1.35], 0.05);
-      boxBetween(parts, s, [zig, CONTACT_Y + 0.02], [zig, CONTACT_Y + 0.18], 0.04);
+      const yT = CONTACT_Y + 1.35; // porteur
+      const yB = CONTACT_Y + 0.25; // tube de console
+      const m0 = mastLat + dir * 0.12;
+      // Console tubulaire : tube horizontal du porteur, tube incliné (hauban), bras de rappel du fil de contact
+      tubeBetween(parts, s, [m0 + dir * 0.7, yT], [tl + dir * 0.9, yT], 0.03);
+      tubeBetween(parts, s, [m0 + dir * 0.65, yB], [zig - dir * 0.35, yB - 0.08], 0.028);
+      tubeBetween(parts, s, [zig - dir * 0.35, yB - 0.08], [zig - dir * 0.02, CONTACT_Y + 0.1], 0.016);
+      tubeBetween(parts, s, [m0 + dir * 0.6, yB + 0.02], [tl + dir * 0.35, yT], 0.022);
+      tubeBetween(parts, s, [zig, CONTACT_Y + 0.02], [zig, CONTACT_Y + 0.16], 0.012);
+      // Ferrures de fixation au poteau
+      boxBetween(parts, s, [mastLat, yT - 0.12], [m0 + 0.02 * dir, yT - 0.12], 0.12);
+      boxBetween(parts, s, [mastLat, yB - 0.1], [m0 + 0.02 * dir, yB - 0.1], 0.12);
       push(s, "steel", mergeGeometries(parts));
+      // Isolateurs céramique à ailettes entre poteau et console
       const ins = [];
-      boxBetween(ins, s, [mastLat + dir * 0.15, CONTACT_Y + 1.35], [mastLat + dir * 0.75, CONTACT_Y + 1.35], 0.13);
-      boxBetween(ins, s, [mastLat + dir * 0.15, CONTACT_Y + 0.25], [mastLat + dir * 0.7, CONTACT_Y + 0.23], 0.12);
+      insulatorBetween(ins, s, [m0, yT], [m0 + dir * 0.7, yT]);
+      insulatorBetween(ins, s, [m0, yB], [m0 + dir * 0.65, yB]);
       push(s, "insul", mergeGeometries(ins));
       const base = new THREE.BoxGeometry(0.9, 0.5, 0.9);
       const b = P(s, mastLat, -0.55);

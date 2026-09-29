@@ -1,0 +1,19 @@
+<!doctype html><html><body style="margin:0">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module">
+// Aperçu léger (sans HDR) : ?f=sf/hetre.glb,sf/epicea.glb — modèles côte à côte, normalisés en hauteur
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+const files=new URLSearchParams(location.search).get("f").split(",");
+const W=1400,H=700; const r=new THREE.WebGLRenderer({antialias:true}); r.setSize(W,H); document.body.appendChild(r.domElement);
+r.toneMapping=THREE.ACESFilmicToneMapping;
+const s=new THREE.Scene(); s.background=new THREE.Color(0xb9c9d8);
+s.add(new THREE.HemisphereLight(0xdfeaff,0x5a5040,2.2)); const d=new THREE.DirectionalLight(0xfff0dd,2.5); d.position.set(5,9,6); s.add(d);
+const info=[]; let x=0;
+for(const f of files){ const g=await new GLTFLoader().loadAsync("../assets/models/"+f); const o=g.scene; const b=new THREE.Box3().setFromObject(o); const sz=b.getSize(new THREE.Vector3());
+  const k=10/sz.y; o.scale.setScalar(k); o.position.set(x - (b.min.x+sz.x/2)*k, -b.min.y*k, -(b.min.z+sz.z/2)*k); s.add(o); x+=Math.max(sz.x,sz.z)*k+2;
+  const mats=[]; o.traverse(c=>{ if(c.isMesh) mats.push([c.material.name,c.material.alphaTest,c.material.transparent,!!c.material.map, c.material.map?.image?.width]); });
+  info.push({f,size:sz.toArray().map(v=>+v.toFixed(2)),mats}); }
+const cam=new THREE.PerspectiveCamera(35,W/H,0.1,500); const side=new URLSearchParams(location.search).get("side"); if(side){cam.position.set(x/2+14,5,0.01);} else cam.position.set(x/2-1,6,x*0.9+8); cam.lookAt(x/2-1,4.5,0); r.render(s,cam);
+window.info=info; window.done=true;
+</script></body></html>

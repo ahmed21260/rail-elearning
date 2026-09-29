@@ -53,6 +53,12 @@ def optimize(src, dst):
     if not gt:
         shutil.copy(src, dst)
         return
+    # Matériaux « specular-glossiness » (non lus par three.js) → metal-roughness
+    head = src.read_bytes()[:200000]
+    if b"KHR_materials_pbrSpecularGlossiness" in head:
+        mr = src.with_suffix(".mr.glb")
+        subprocess.run([gt, "metalrough", str(src), str(mr)], check=True, capture_output=True)
+        shutil.move(mr, src)
     subprocess.run([gt, "optimize", str(src), str(dst), "--compress", "false", "--join", "false", "--instance", "false",
                     "--palette", "false", "--flatten", "false", "--simplify", "false",
                     "--texture-compress", "webp", "--texture-size", "1024"], check=True, capture_output=True)

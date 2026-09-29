@@ -166,6 +166,9 @@ if (!loadErr) {
       ["41-foret", () => { const F = window.__ft; F.startJob("train"); const t = F.job.debug.t; t.s = 2300; F.job.camMode = "cab"; }],
       ["42-pelle", () => { const F = window.__ft; F.startJob("pelle"); F.job.camMode = "follow"; }],
       ["43-nacelle", () => { const F = window.__ft; F.startJob("nacelle"); F.job.camMode = "orbit"; F.rig.o = { yaw: 3.6, pitch: 0.25, dist: 16 }; }],
+      ["44-gare", () => { const F = window.__ft, P = window.__ftP; F.enterWorld(); const p = P(5405, -7.5); Object.assign(F.world.avatar.st, { x: p.x, z: p.z }); F.rig.o = { yaw: 1.2, pitch: 0.12, dist: 26 }; }],
+      ["45-catenaire", () => { const F = window.__ft, P = window.__ftP; F.enterWorld(); const p = P(608, -4.8); Object.assign(F.world.avatar.st, { x: p.x, z: p.z }); F.rig.o = { yaw: 2.4, pitch: 0.05, dist: 7 }; }],
+      ["46-hameau", () => { const F = window.__ft, P = window.__ftP; F.enterWorld(); const p = P(330, -8); Object.assign(F.world.avatar.st, { x: p.x, z: p.z }); F.rig.o = { yaw: 0.6, pitch: 0.1, dist: 10 }; }],
     ];
     for (const [name, fn] of views) {
       await page.evaluate(`(${fn.toString()})()`);

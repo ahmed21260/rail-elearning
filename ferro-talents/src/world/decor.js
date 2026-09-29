@@ -1,5 +1,5 @@
-// Décor bâti réaliste (modèles Sketchfab CC-BY) : bâtiment voyageurs de Valbruche, hameau en face de la
-// base travaux, village autour de la gare, conteneurs de chantier. Chaque objet réserve son emprise
+// Décor bâti réaliste (modèles Sketchfab CC-BY) : bâtiment voyageurs de Valbruche (gare Saint-Rémy),
+// hameau à colombages en face de la base travaux, village autour de la gare. Chaque objet réserve son emprise
 // (pas d'arbres ni d'herbe dedans) et se pose sur le terrain réel.
 import * as THREE from "three";
 import { frame } from "./line.js";
@@ -57,9 +57,9 @@ function put(scene, gltf, s, lat, { height, yaw = 0, maxSlope = 2.5, sink = 0.15
 }
 
 export function buildDecor(scene, sf) {
-  const placed = { gare: 0, maisons: 0, conteneurs: 0 };
+  const placed = { gare: 0, maisons: 0 };
   // Bâtiment voyageurs derrière le quai (quai : 5,5 m de large à partir de TRACK_LAT − 1,65)
-  if (put(scene, sf.gare_kehl, STATION.from + 125, TRACK_LAT - 1.65 - 5.5 - 7.5, { height: 10.5, maxSlope: 6, sink: 0.6 })) placed.gare++;
+  if (put(scene, sf.gare_saint_remy, STATION.from + 125, TRACK_LAT - 1.65 - 5.5 - 8.5, { height: 11, maxSlope: 6, sink: 0.6 })) placed.gare++;
   const houses = [sf.maison_troyes_8, sf.maison_troyes_2, sf.maison_troyes_f1, sf.maison_angers_1].filter(Boolean);
   const hRand = (i) => ((Math.sin(i * 91.7) * 43758.5) % 1 + 1) % 1;
   // Hameau face à la base travaux (vu à l'arrivée), village autour de la gare
@@ -72,7 +72,5 @@ export function buildDecor(scene, sf) {
     const m = houses[i % houses.length];
     if (put(scene, m, s, lat, { height: 9 + hRand(i + 3) * 4, yaw: (hRand(i + 11) < 0.5 ? 0 : Math.PI) + (hRand(i + 5) - 0.5) * 0.2 })) placed.maisons++;
   });
-  // Conteneurs de chantier au fond de la base
-  for (const [s, lat] of [[325, -71], [338, -71]]) if (put(scene, sf.conteneurs, s, lat, { height: 2.6, maxSlope: 3, sink: -0.3 })) placed.conteneurs++;
   return placed;
 }

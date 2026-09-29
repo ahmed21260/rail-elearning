@@ -341,7 +341,7 @@ function treeFromModel(kind, gltf, height, tint) {
     const mat = mat0.clone();
     mat.transparent = false;
     if (leafy) {
-      mat.alphaTest = Math.max(mat.alphaTest || 0, 0.5);
+      mat.alphaTest = THREE.MathUtils.clamp(mat.alphaTest || 0.3, 0.2, 0.4); // seuil du modèle (feuillage dense)
       mat.side = THREE.DoubleSide;
     }
     mat.color.multiply(new THREE.Color(...tint));
@@ -377,13 +377,15 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
 
   // Variantes : arbres scannés/modélisés (Sketchfab) si disponibles, sinon arbres procéduraux
   const species = [];
-  const real = { broad: trees?.hetre, fir: trees?.epicea };
-  if (real.broad) for (const [k, h] of [[0, 19], [1, 15], [2, 22]]) species.push(treeFromModel("broad", real.broad, h, [[1, 1, 1], [0.94, 1.02, 0.9], [1.04, 1.0, 0.92]][k]));
+  // Feuillus : hêtre (×2 tailles) et bouleau ; conifères : sapin dense (×2) et épicéa élancé
+  const real = { broad: trees?.hetre || trees?.bouleau, fir: trees?.pin || trees?.epicea };
+  const variants = (list) => list.filter(([m]) => m);
+  if (real.broad) for (const [m, h, t] of variants([[trees.hetre, 19, [1, 1, 1]], [trees.hetre, 15, [0.94, 1.02, 0.9]], [trees.bouleau, 17, [1.02, 1.0, 0.95]]])) species.push(treeFromModel("broad", m, h, t));
   else for (let k = 0; k < 4; k++) {
     const t = broadleaf(31 + k * 17);
     species.push({ kind: "broad", parts: [{ geometry: t.wood, material: barkMat, cast: true }, { geometry: t.leaves, material: leafMats[k % 3], cast: true }], height: t.height });
   }
-  if (real.fir) for (const [k, h] of [[0, 22], [1, 17], [2, 26]]) species.push(treeFromModel("fir", real.fir, h, [[1, 1, 1], [0.92, 0.98, 0.95], [1.02, 1.04, 0.98]][k]));
+  if (real.fir) for (const [m, h, t] of variants([[trees.pin, 22, [1, 1, 1]], [trees.pin, 17, [0.9, 0.97, 0.93]], [trees.epicea, 25, [1.02, 1.04, 0.98]]])) species.push(treeFromModel("fir", m, h, t));
   else for (let k = 0; k < 3; k++) {
     const t = fir(211 + k * 13);
     species.push({ kind: "fir", parts: [{ geometry: t.wood, material: barkMat, cast: true }, { geometry: t.leaves, material: needleMat, cast: true }], height: t.height });

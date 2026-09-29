@@ -16,7 +16,7 @@ import { buildWorker } from "../vehicles/worker.js";
 import { SIGNALS, TIV, TRAIN_START } from "../jobs/train-rules.js";
 
 // Modèles Sketchfab (tools/sketchfab.py, crédits dans assets/SKETCHFAB.md) : optionnels
-const SF_DECOR = ["gare_kehl", "maison_troyes_8", "maison_troyes_2", "maison_troyes_f1", "maison_angers_1", "conteneurs"];
+const SF_DECOR = ["gare_saint_remy", "maison_troyes_8", "maison_troyes_2", "maison_troyes_f1", "maison_angers_1"];
 
 const MODELS = [
   "shrub_02", "grass_medium_02", "fern_02", "celandine_01", "rock_moss_set_01", "tree_stump_01",
@@ -89,13 +89,15 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   initLine(await loadJSON("data/line.json"));
   await loadDEM(`${BASE}/dem`);
   const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch(() => null)));
-  const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, ...mods] = await Promise.all([
+  const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, pin, bouleau, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),
     loadImage(`${BASE}/hdri/kloofendal_48d_partly_cloudy_puresky_bg.jpg`),
     loadModel("worker.glb"),
     loadModel("sf/pelle_atek.glb").catch(() => null), // pelle réaliste (Sketchfab), sinon version procédurale
     loadModel("sf/epicea.glb").catch(() => null), // arbres réalistes (Sketchfab), sinon arbres procéduraux
     loadModel("sf/hetre.glb").catch(() => null),
+    loadModel("sf/pin.glb").catch(() => null),
+    loadModel("sf/bouleau.glb").catch(() => null),
     ...MODELS.map((m) => loadModel(m)),
     document.fonts.load("800 120px Inter"),
   ]);
@@ -124,7 +126,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   trackSign(scene, TIV.to + 50, "R", "#ffc21a", "#111");
 
   progress("Forêts, prairies et haies…", 0.65);
-  const veg = await buildVegetation(core.renderer, scene, { quality, models, trees: { epicea, hetre }, isFree });
+  const veg = await buildVegetation(core.renderer, scene, { quality, models, trees: { epicea, hetre, pin, bouleau }, isFree });
 
   progress("Signaux et engins…", 0.85);
   const signals = Object.fromEntries(SIGNALS.map((d) => [d.id, { api: buildSignal(scene, { s: d.s, lat: TRACK_LAT - 2.8, label: d.label, lamps: {} }), lit: {} }]));
