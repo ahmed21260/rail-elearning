@@ -155,3 +155,9 @@ Pour toute question ou problème :
 ## 📄 Licence
 
 MIT License - Voir LICENSE pour plus de détails. 
+## 🎬 Vidéos de formation
+
+Atelier vidéo (HyperFrames + Remotion, piloté par Claude Code) : voir [`video/README.md`](video/README.md).
+```bash
+bash video/setup.sh
+```

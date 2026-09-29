@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Signalisation ferroviaire — Module 1</title>
+    <script src="assets/vendor/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #111a2e;
+        --ink: #f1f5f9;
+        --muted: #94a3b8;
+        --rail: #475569;
+        --red: #ef4444;
+        --yellow: #facc15;
+        --accent: #38bdf8;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------- Voie (fond partagé) ---------- */
+      #track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 260px;
+      }
+      #track svg {
+        display: block;
+        width: 1920px;
+        height: 260px;
+      }
+      #train {
+        position: absolute;
+        bottom: 104px;
+        left: 0;
+        width: 520px;
+        height: 120px;
+      }
+
+      /* ---------- Scène titre ---------- */
+      .title-wrap {
+        position: absolute;
+        left: 160px;
+        top: 250px;
+        width: 1600px;
+      }
+      .kicker {
+        display: block;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .title {
+        display: block;
+        margin-top: 24px;
+        font-size: 128px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .subtitle {
+        display: block;
+        margin-top: 32px;
+        font-size: 44px;
+        color: var(--muted);
+      }
+
+      /* ---------- Scènes signal ---------- */
+      .signal-scene .signal {
+        position: absolute;
+        left: 260px;
+        top: 150px;
+        width: 260px;
+        height: 820px;
+      }
+      .mast {
+        position: absolute;
+        left: 115px;
+        top: 420px;
+        width: 30px;
+        height: 400px;
+        background: var(--rail);
+        border-radius: 4px;
+      }
+      .head {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 260px;
+        height: 440px;
+        background: #020617;
+        border: 6px solid #334155;
+        border-radius: 130px;
+      }
+      .lamp {
+        position: absolute;
+        left: 55px;
+        width: 138px;
+        height: 138px;
+        border-radius: 50%;
+        background: #1e293b;
+      }
+      .lamp.l1 {
+        top: 40px;
+      }
+      .lamp.l2 {
+        top: 245px;
+      }
+      .lamp-on {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        opacity: 0;
+      }
+      .lamp-on.red {
+        background: radial-gradient(circle at 40% 35%, #fecaca, var(--red) 55%, #991b1b);
+        box-shadow: 0 0 60px 18px rgba(239, 68, 68, 0.55);
+      }
+      .lamp-on.yellow {
+        background: radial-gradient(circle at 40% 35%, #fef9c3, var(--yellow) 55%, #a16207);
+        box-shadow: 0 0 60px 18px rgba(250, 204, 21, 0.5);
+      }
+      .copy {
+        position: absolute;
+        left: 700px;
+        top: 250px;
+        width: 1060px;
+      }
+      .tag {
+        display: inline-block;
+        padding: 10px 22px;
+        border-radius: 999px;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .tag.red {
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+      }
+      .tag.yellow {
+        background: rgba(250, 204, 21, 0.15);
+        color: #fde68a;
+      }
+      .name {
+        display: block;
+        margin-top: 28px;
+        font-size: 112px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .rule {
+        display: block;
+        margin-top: 36px;
+        font-size: 46px;
+        line-height: 1.25;
+        color: #cbd5e1;
+      }
+      .aspect {
+        display: block;
+        margin-top: 28px;
+        font-size: 32px;
+        color: var(--muted);
+      }
+
+      /* ---------- Récap ---------- */
+      .recap-title {
+        position: absolute;
+        left: 160px;
+        top: 140px;
+        width: 1600px;
+        font-size: 84px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .cards {
+        position: absolute;
+        left: 160px;
+        top: 320px;
+        width: 1600px;
+        height: 420px;
+        display: flex;
+        gap: 40px;
+      }
+      .card {
+        flex: 1;
+        height: 420px;
+        background: var(--panel);
+        border: 2px solid #1e293b;
+        border-radius: 28px;
+        padding: 44px;
+      }
+      .dots {
+        display: flex;
+        gap: 18px;
+        height: 70px;
+      }
+      .dot {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+      }
+      .dot.red {
+        background: var(--red);
+        box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+      }
+      .dot.yellow {
+        background: var(--yellow);
+        box-shadow: 0 0 30px rgba(250, 204, 21, 0.6);
+      }
+      .card-name {
+        display: block;
+        margin-top: 44px;
+        font-size: 58px;
+        font-weight: 800;
+      }
+      .card-rule {
+        display: block;
+        margin-top: 18px;
+        font-size: 34px;
+        line-height: 1.3;
+        color: #cbd5e1;
+      }
+      .cta {
+        position: absolute;
+        left: 160px;
+        top: 780px;
+        width: 1600px;
+        font-size: 40px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .disclaimer {
+        position: absolute;
+        left: 160px;
+        top: 850px;
+        width: 1600px;
+        font-size: 22px;
+        color: #8a9ab0;
+      }
+
+      /* ---------- Volet de transition ---------- */
+      .wipe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Voie + train : fond présent sur tout le module -->
+      <div id="track-layer" class="clip" data-start="0" data-duration="24" data-track-index="0">
+        <div id="track">
+          <svg viewBox="0 0 1920 260" aria-hidden="true">
+            <g id="sleepers" fill="#1e293b"></g>
+            <rect x="0" y="150" width="1920" height="10" fill="#64748b" />
+            <rect x="0" y="210" width="1920" height="10" fill="#64748b" />
+          </svg>
+        </div>
+        <svg id="train" viewBox="0 0 520 120" aria-hidden="true">
+          <rect x="0" y="10" width="440" height="90" rx="18" fill="#e2e8f0" />
+          <path d="M440 10 H470 Q520 10 520 60 V100 H440 Z" fill="#cbd5e1" />
+          <rect x="20" y="30" width="80" height="36" rx="6" fill="#0f172a" />
+          <rect x="120" y="30" width="80" height="36" rx="6" fill="#0f172a" />
+          <rect x="220" y="30" width="80" height="36" rx="6" fill="#0f172a" />
+          <rect x="320" y="30" width="80" height="36" rx="6" fill="#0f172a" />
+          <rect x="455" y="28" width="45" height="30" rx="6" fill="#0f172a" />
+          <rect x="0" y="76" width="520" height="8" fill="#38bdf8" />
+          <circle cx="70" cy="108" r="12" fill="#334155" />
+          <circle cx="160" cy="108" r="12" fill="#334155" />
+          <circle cx="360" cy="108" r="12" fill="#334155" />
+          <circle cx="450" cy="108" r="12" fill="#334155" />
+        </svg>
+      </div>
+
+      <!-- Scène 1 : titre -->
+      <section id="s-title" class="clip" data-start="0" data-duration="4.5" data-track-index="1">
+        <div class="title-wrap">
+          <span class="kicker" id="t-kicker">Formation opérateur · Module 1</span>
+          <span class="title" id="t-title">Signalisation ferroviaire</span>
+          <span class="subtitle" id="t-sub">Les trois signaux à connaître par cœur</span>
+        </div>
+      </section>
+
+      <!-- Scène 2 : le Carré -->
+      <section id="s-carre" class="clip signal-scene" data-start="4.5" data-duration="5" data-track-index="1">
+        <div class="signal" id="c-signal">
+          <div class="mast"></div>
+          <div class="head">
+            <div class="lamp l1"><div class="lamp-on red" id="c-l1"></div></div>
+            <div class="lamp l2"><div class="lamp-on red" id="c-l2"></div></div>
+          </div>
+        </div>
+        <div class="copy">
+          <span class="tag red" id="c-tag">Signal d'arrêt</span>
+          <span class="name" id="c-name">Le Carré</span>
+          <span class="rule" id="c-rule">Arrêt absolu. Ne jamais le franchir sans autorisation.</span>
+          <span class="aspect" id="c-aspect">Aspect : deux feux rouges</span>
+        </div>
+      </section>
+
+      <!-- Scène 3 : le Sémaphore -->
+      <section id="s-sema" class="clip signal-scene" data-start="9.5" data-duration="5" data-track-index="1">
+        <div class="signal" id="m-signal">
+          <div class="mast"></div>
+          <div class="head">
+            <div class="lamp l1"><div class="lamp-on red" id="m-l1"></div></div>
+            <div class="lamp l2"></div>
+          </div>
+        </div>
+        <div class="copy">
+          <span class="tag red" id="m-tag">Signal d'arrêt</span>
+          <span class="name" id="m-name">Le Sémaphore</span>
+          <span class="rule" id="m-rule">Protège un canton occupé. S'arrêter avant le signal.</span>
+          <span class="aspect" id="m-aspect">Aspect : un feu rouge</span>
+        </div>
+      </section>
+
+      <!-- Scène 4 : l'Avertissement -->
+      <section id="s-avert" class="clip signal-scene" data-start="14.5" data-duration="4.5" data-track-index="1">
+        <div class="signal" id="a-signal">
+          <div class="mast"></div>
+          <div class="head">
+            <div class="lamp l1"></div>
+            <div class="lamp l2"><div class="lamp-on yellow" id="a-l2"></div></div>
+          </div>
+        </div>
+        <div class="copy">
+          <span class="tag yellow" id="a-tag">Signal d'annonce</span>
+          <span class="name" id="a-name">L'Avertissement</span>
+          <span class="rule" id="a-rule">Annonce un signal d'arrêt. Être en mesure de s'arrêter.</span>
+          <span class="aspect" id="a-aspect">Aspect : un feu jaune</span>
+        </div>
+      </section>
+
+      <!-- Scène 5 : récapitulatif -->
+      <section id="s-recap" class="clip" data-start="19" data-duration="5" data-track-index="1">
+        <div class="recap-title" id="r-title">À retenir</div>
+        <div class="cards">
+          <div class="card" id="r-c1">
+            <div class="dots"><div class="dot red"></div><div class="dot red"></div></div>
+            <span class="card-name">Carré</span>
+            <span class="card-rule">Arrêt absolu</span>
+          </div>
+          <div class="card" id="r-c2">
+            <div class="dots"><div class="dot red"></div></div>
+            <span class="card-name">Sémaphore</span>
+            <span class="card-rule">Arrêt, canton occupé</span>
+          </div>
+          <div class="card" id="r-c3">
+            <div class="dots"><div class="dot yellow"></div></div>
+            <span class="card-name">Avertissement</span>
+            <span class="card-rule">Préparer l'arrêt</span>
+          </div>
+        </div>
+        <div class="cta" id="r-cta">Testez-vous : quiz disponible dans le module</div>
+        <div class="disclaimer" id="r-disc">Support pédagogique simplifié. Seuls les référentiels réglementaires en vigueur font foi.</div>
+      </section>
+
+      <!-- Volets de transition entre scènes -->
+      <div id="wipe-layer" class="clip" data-start="0" data-duration="24" data-track-index="2">
+        <div class="wipe" id="w1"></div>
+        <div class="wipe" id="w2"></div>
+        <div class="wipe" id="w3"></div>
+        <div class="wipe" id="w4"></div>
+      </div>
+    </div>
+
+    <script>
+      // Traverses de voie (déterministe : pas de Math.random)
+      const sleepers = document.getElementById("sleepers");
+      for (let x = 0; x < 1920; x += 60) {
+        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", x);
+        r.setAttribute("y", "140");
+        r.setAttribute("width", "22");
+        r.setAttribute("height", "90");
+        r.setAttribute("rx", "3");
+        sleepers.appendChild(r);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // Train : traverse l'écran, ralentit à chaque signal, repart
+      tl.fromTo("#train", { x: -560 }, { x: 1960, duration: 24, ease: "none" }, 0);
+
+      // Scène 1 — titre
+      tl.fromTo("#t-kicker", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.3);
+      tl.fromTo("#t-title", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.5);
+      tl.fromTo("#t-sub", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.9);
+
+      // Scène signal générique
+      function signalScene(p, start, lamps) {
+        tl.fromTo(`#${p}-signal`, { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)" }, start + 0.2);
+        lamps.forEach((id, i) => {
+          tl.fromTo(`#${id}`, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out" }, start + 0.8 + i * 0.25);
+        });
+        tl.fromTo(`#${p}-tag`, { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, start + 0.5);
+        tl.fromTo(`#${p}-name`, { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, start + 0.65);
+        tl.fromTo(`#${p}-rule`, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, start + 1.1);
+        tl.fromTo(`#${p}-aspect`, { opacity: 0 }, { opacity: 1, duration: 0.5 }, start + 1.6);
+        // Clignotement léger (nombre fini de répétitions)
+        lamps.forEach((id) => {
+          tl.to(`#${id}`, { opacity: 0.55, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 3 }, start + 2.2);
+        });
+      }
+      signalScene("c", 4.5, ["c-l1", "c-l2"]);
+      signalScene("m", 9.5, ["m-l1"]);
+      signalScene("a", 14.5, ["a-l2"]);
+
+      // Scène 5 — récap
+      tl.fromTo("#r-title", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 19.2);
+      ["#r-c1", "#r-c2", "#r-c3"].forEach((sel, i) => {
+        tl.fromTo(sel, { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.3)" }, 19.5 + i * 0.2);
+      });
+      tl.fromTo("#r-cta", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 20.6);
+      tl.fromTo("#r-disc", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 21);
+
+      // Volets : un panneau glisse de gauche à droite et masque la coupe
+      [4.5, 9.5, 14.5, 19].forEach((cut, i) => {
+        const w = `#w${i + 1}`;
+        tl.fromTo(w, { x: -1920 }, { x: 0, duration: 0.35, ease: "power3.in" }, cut - 0.35);
+        tl.to(w, { x: 1920, duration: 0.4, ease: "power3.out" }, cut);
+      });
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

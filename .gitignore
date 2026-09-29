@@ -216,3 +216,9 @@ workbox-*.js
 
 # Local development
 .local 
+# Atelier vidéo
+video/_refs/
+video/**/out/
+video/**/snapshots/
+video/**/.thumbnails/
+.claude/skills/remotion-*/
