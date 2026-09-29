@@ -42,6 +42,7 @@ check(!loadErr, "le monde se charge");
 const shot = async (name) => {
   if (!out) return;
   fs.mkdirSync(out, { recursive: true });
+  await page.evaluate(() => window.__ft.snapCam());
   await page.waitForTimeout(2500);
   await page.screenshot({ path: path.join(out, `${name}.jpg`), type: "jpeg", quality: 85, timeout: 300000 });
 };
@@ -101,6 +102,20 @@ if (!loadErr) {
     await shot("10-train-cabine");
     await page.evaluate(() => { window.__ft.input.press("c"); });
     await shot("11-train-exterieur");
+  }
+  if (only.includes("look")) {
+    // Vues de contrôle du rendu (audit visuel)
+    const views = [
+      ["40-base", () => { const F = window.__ft; F.enterWorld(); F.rig.o = { yaw: 2.2, pitch: 0.18, dist: 9 }; }],
+      ["41-foret", () => { const F = window.__ft; F.startJob("train"); const t = F.job.debug.t; t.s = 2300; F.job.camMode = "cab"; }],
+      ["42-pelle", () => { const F = window.__ft; F.startJob("pelle"); F.job.camMode = "follow"; }],
+      ["43-nacelle", () => { const F = window.__ft; F.startJob("nacelle"); F.job.camMode = "orbit"; F.rig.o = { yaw: 3.6, pitch: 0.25, dist: 16 }; }],
+    ];
+    for (const [name, fn] of views) {
+      await page.evaluate(`(${fn.toString()})()`);
+      await page.evaluate(() => window.__ft.job?.update(0.05));
+      await shot(name);
+    }
   }
   if (only.includes("reach")) {
     const r = await page.evaluate(() => {
@@ -197,7 +212,23 @@ if (!loadErr) {
         for (const [k, [neg, pos]] of Object.entries(map)) { const c = best.k === k ? Math.sign(best.dv) : 0; key.hold(pos, c > 0); key.hold(neg, c < 0); }
         return f0;
       };
-      if (is("pendule")) { const d = go(window.__ftDropper(), []); key.hold("e", d < 1.0); return; }
+      if (is("pendule")) {
+        const tgt = window.__ftDropper();
+        if (!J._T) {
+          const save = { ...j }; let best = { d: 1e9 };
+          for (let sl = -3.1; sl < 3.1; sl += 0.05) for (let lo = 0.02; lo <= 1.35; lo += 0.04) for (let up = -3.05; up <= 0.35; up += 0.04) {
+            Object.assign(j, { slew: sl, lower: lo, upper: up }); nc.move(0, {}); const d = nc.workPoint().distanceTo(tgt);
+            if (d < best.d) best = { d, slew: sl, lower: lo, upper: up };
+          }
+          Object.assign(j, save); nc.move(0, {}); J._T = best;
+        }
+        const T = J._T; const e = 0.02;
+        key.hold("a", T.slew > j.slew + e); key.hold("d", T.slew < j.slew - e);
+        key.hold("w", T.lower > j.lower + e); key.hold("s", T.lower < j.lower - e);
+        key.hold("i", T.upper > j.upper + e); key.hold("k", T.upper < j.upper - e);
+        key.hold("e", nc.workPoint().distanceTo(tgt) < 1.5);
+        return;
+      }
       key.hold("e", false);
       if (is("descente")) {
         key.hold("k", j.upper > -3.0); key.hold("s", j.lower > 0.05); key.hold("w", false); key.hold("i", false);
@@ -214,9 +245,10 @@ if (!loadErr) {
     // Faute volontaire : monter vers la caténaire sans consignation
     const bad = await run("nacelle", `
       const { st, rr, nc } = J.debug;
-      if (tick === 0) { key.tap("m"); const P = window.__ftP; const f = window.__ftFrame(744.5); const p = P(744.5, -2.1); rr.setRoad(p.x, p.z, -f.th); }
+      if (tick === 0) { key.tap("m"); const P = window.__ftP; const f = window.__ftFrame(440); const p = P(440, -2.1); rr.setRoad(p.x, p.z, -f.th); }
       if (tick === 1) { key.tap("v"); }
       if (rr.mode !== "rail") return;
+      if (!J._moved) { rr.s = 744.5; J._moved = true; }
       if (!rr.brake) { key.tap("b"); return; }
       if (st.stab < 1) { if (!st.stabDir) key.tap("x"); return; }
       key.hold("w", true); key.hold("i", true);

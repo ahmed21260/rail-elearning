@@ -351,7 +351,7 @@ export async function buildVegetation(renderer, scene, { quality, models, isFree
     items[k].push({ m, c: new THREE.Color(tint * (0.95 + r() * 0.1), tint, tint * (0.9 + r() * 0.1)) });
   };
   const SP = quality === "low" ? 13 : 8.5;
-  const REACH = quality === "low" ? 1100 : 1700;
+  const REACH = quality === "low" ? 1300 : 2400;
   for (let s = -600; s < len + 600; s += SP) {
     const f = frame(s);
     for (let lat = -REACH; lat < REACH; lat += SP) {
@@ -359,7 +359,7 @@ export async function buildVegetation(renderer, scene, { quality, models, isFree
       const z = f.z + f.rz * lat + (r() - 0.5) * SP;
       if (Math.abs(lat) < 14 || !isFree(x, z)) continue;
       const fm = forestMask(x, z);
-      if (fm > 0.45 && r() < fm) {
+      if (fm > 0.4 && r() < Math.min(1, fm * 1.5)) {
         const alt = dem(x, z) - f.y;
         add(x, z, r() < 0.25 + 0.6 * Math.min(Math.max(alt / 120, 0), 1), 1);
       } else if (fm < 0.3) {

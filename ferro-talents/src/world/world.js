@@ -91,7 +91,6 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
     document.fonts.load("800 120px Inter"),
   ]);
   const models = Object.fromEntries(MODELS.map((m, i) => [m, mods[i]]));
-  const avatarGltf = await loadModel("CesiumMan.glb");
 
   progress("Ciel et lumière…", 0.2);
   const f = frame(lineLength() / 2);
@@ -134,7 +133,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   park(nac.rr, 348, -30);
   exc.rr.update(0, { throttle: 0, steer: 0 });
   nac.rr.update(0, { throttle: 0, steer: 0 });
-  const avatar = buildAvatar(scene, avatarGltf);
+  const avatar = buildAvatar(scene);
   const spawn = P(290, -52);
   Object.assign(avatar.st, { x: spawn.x, z: spawn.z, yaw: -frame(290).th - Math.PI / 2 });
 

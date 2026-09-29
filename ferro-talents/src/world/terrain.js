@@ -195,7 +195,8 @@ function terrainMaterial() {
           float kf = smoothstep( 0.2, 0.8, vSplat.y + n * 0.5 );
           float kg = smoothstep( 0.2, 0.8, vSplat.z + n * 0.4 );
           vec4 c = mix( grassC, mudC, km );
-          c = mix( c, forC * 0.9, kf );
+          // Sous forêt : sol sombre et verdâtre (lu de loin comme une canopée)
+          c = mix( c, forC * vec4( 0.46, 0.62, 0.36, 1.0 ), kf );
           c = mix( c, grvC, kg );
           diffuseColor *= c;
         #endif`,

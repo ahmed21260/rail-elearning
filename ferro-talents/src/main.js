@@ -438,6 +438,9 @@ window.__ft = {
   },
   jobs: JOBS,
   startJob: (id) => startJob(JOBS.find((j) => j.def.id === id)),
+  snapCam() {
+    if (job) for (let i = 0; i < 40; i++) job.camera(0.25, rig);
+  },
   enterWorld,
   showHub,
   endJob,

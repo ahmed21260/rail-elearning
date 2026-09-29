@@ -39,7 +39,6 @@ usage commercial libre, attribution non obligatoire mais faite ici.
 
 | Asset | Licence | Auteur | Rôle | Fichiers |
 |---|---|---|---|---|
-| [CesiumMan](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMan) | CC-BY 4.0 | Cesium (Khronos glTF Sample Assets) | Personnage animé (marche) du monde ouvert | models/CesiumMan.glb |
 | [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) | Données ouvertes (voir attributions AWS / Mapzen) | SRTM, Copernicus et autres sources publiques | Relief réel | dem/*.png |
 
 Code tiers embarqué : three.js (MIT, `vendor/THREE_LICENSE`), GSAP (licence standard GreenSock), police Inter (SIL OFL 1.1).

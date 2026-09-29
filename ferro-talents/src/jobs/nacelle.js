@@ -101,6 +101,10 @@ export function createNacelleJob(ctx) {
     def: NAC_JOB,
     mission: m,
     debug: { st, rr, nc },
+    debugInfo() {
+      const wp = nc.workPoint();
+      return { d: +wp.distanceTo(dropperPt).toFixed(2), joints: Object.fromEntries(Object.entries(nc.joints).map(([k, v]) => [k, +v.toFixed(2)])), wp: wp.toArray().map((v) => +v.toFixed(1)), drop: dropperPt.toArray().map((v) => +v.toFixed(1)), stab: st.stab, brake: rr.brake, malt: st.malt, live: st.live };
+    },
     cams: ["follow", "basket", "orbit", "cab"],
     get camMode() {
       return camMode;
@@ -227,7 +231,7 @@ export function createNacelleJob(ctx) {
       rr.update(dt, drive);
       nc.update();
       // Intervention sur le pendule
-      const near = wp.distanceTo(dropperPt) < 1.3;
+      const near = wp.distanceTo(dropperPt) < 1.6; // bras + outil depuis le panier
       if (m.is("pendule") && near && input.down("e")) {
         st.repair += dt;
         if (st.repair > 4) {

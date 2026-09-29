@@ -1,57 +1,209 @@
 {
   "_doc": "Assets Ferro Talents : tous gratuits (CC0 ou CC-BY). python3 video/tools/fetch_assets.py --manifest ferro-talents/assets-manifest.json --dest ferro-talents/assets",
   "hdri": [
-    { "id": "kloofendal_48d_partly_cloudy_puresky", "res": "2k", "role": "Ciel et éclairage", "tonemapped_max_width": 6144 }
-  ],
-  "textures": [
-    { "id": "gravel_stones", "res": "2k", "maps": ["Diffuse", "nor_gl", "Rough"], "role": "Ballast" },
-    { "id": "brown_mud_dry", "res": "1k", "maps": ["Diffuse"], "role": "Champs labourés" },
-    { "id": "concrete_floor_worn_001", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Traverses, quai" },
-    { "id": "rusty_metal_02", "res": "1k", "maps": ["Diffuse"], "role": "Rails" },
-    { "id": "bark_brown_02", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Écorce des arbres" },
-    { "id": "asphalt_02", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Route, parking de la base" },
-    { "id": "gravel_road", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Piste de service" },
-    { "id": "forest_leaves_02", "res": "1k", "maps": ["Diffuse"], "role": "Sol de sous-bois" },
-    { "id": "metal_plate", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Plateaux et marchepieds des engins" },
-    { "id": "corrugated_iron_02", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Hangar de la base" }
-  ],
-  "texture_extras": [
-    { "id": "island_tree_02", "res": "1k", "maps": ["leaves_diff", "leaves_alpha"], "role": "Feuilles (grappes générées)" }
-  ],
-  "models": [
-    { "id": "shrub_02", "res": "1k", "role": "Buissons" },
-    { "id": "grass_medium_02", "res": "1k", "role": "Touffes d'herbe" },
-    { "id": "fern_02", "res": "1k", "role": "Fougères" },
-    { "id": "celandine_01", "res": "1k", "role": "Fleurs" },
-    { "id": "rock_moss_set_01", "res": "1k", "role": "Rochers moussus" },
-    { "id": "tree_stump_01", "res": "1k", "role": "Souche" },
-    { "id": "concrete_road_barrier", "res": "1k", "role": "Barrières béton chantier" },
-    { "id": "portable_generator", "res": "1k", "role": "Groupe électrogène chantier" },
-    { "id": "tool_cart", "res": "1k", "role": "Servante d'atelier" },
-    { "id": "metal_toolbox", "res": "1k", "role": "Caisse à outils" },
-    { "id": "wooden_crate_01", "res": "1k", "role": "Caisses" },
-    { "id": "industrial_pastic_container", "res": "1k", "role": "Bidons" },
-    { "id": "propane_tank", "res": "1k", "role": "Bouteille de gaz" },
-    { "id": "street_lamp_01", "res": "1k", "role": "Éclairage de la base" },
-    { "id": "wooden_ladder", "res": "1k", "role": "Échelle" }
-  ],
-  "ambientcg": [
-    { "id": "Grass004", "res": "1K", "maps": ["Color", "NormalGL"], "role": "Prairie" }
-  ],
-  "direct": [
     {
-      "id": "CesiumMan",
-      "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb",
-      "dest": "models/CesiumMan.glb",
-      "license": "CC-BY 4.0",
-      "author": "Cesium (Khronos glTF Sample Assets)",
-      "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMan",
-      "role": "Personnage animé (marche) du monde ouvert"
+      "id": "kloofendal_48d_partly_cloudy_puresky",
+      "res": "2k",
+      "role": "Ciel et éclairage",
+      "tonemapped_max_width": 6144
     }
   ],
+  "textures": [
+    {
+      "id": "gravel_stones",
+      "res": "2k",
+      "maps": [
+        "Diffuse",
+        "nor_gl",
+        "Rough"
+      ],
+      "role": "Ballast"
+    },
+    {
+      "id": "brown_mud_dry",
+      "res": "1k",
+      "maps": [
+        "Diffuse"
+      ],
+      "role": "Champs labourés"
+    },
+    {
+      "id": "concrete_floor_worn_001",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Traverses, quai"
+    },
+    {
+      "id": "rusty_metal_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse"
+      ],
+      "role": "Rails"
+    },
+    {
+      "id": "bark_brown_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Écorce des arbres"
+    },
+    {
+      "id": "asphalt_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Route, parking de la base"
+    },
+    {
+      "id": "gravel_road",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Piste de service"
+    },
+    {
+      "id": "forest_leaves_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse"
+      ],
+      "role": "Sol de sous-bois"
+    },
+    {
+      "id": "metal_plate",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Plateaux et marchepieds des engins"
+    },
+    {
+      "id": "corrugated_iron_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Hangar de la base"
+    }
+  ],
+  "texture_extras": [
+    {
+      "id": "island_tree_02",
+      "res": "1k",
+      "maps": [
+        "leaves_diff",
+        "leaves_alpha"
+      ],
+      "role": "Feuilles (grappes générées)"
+    }
+  ],
+  "models": [
+    {
+      "id": "shrub_02",
+      "res": "1k",
+      "role": "Buissons"
+    },
+    {
+      "id": "grass_medium_02",
+      "res": "1k",
+      "role": "Touffes d'herbe"
+    },
+    {
+      "id": "fern_02",
+      "res": "1k",
+      "role": "Fougères"
+    },
+    {
+      "id": "celandine_01",
+      "res": "1k",
+      "role": "Fleurs"
+    },
+    {
+      "id": "rock_moss_set_01",
+      "res": "1k",
+      "role": "Rochers moussus"
+    },
+    {
+      "id": "tree_stump_01",
+      "res": "1k",
+      "role": "Souche"
+    },
+    {
+      "id": "concrete_road_barrier",
+      "res": "1k",
+      "role": "Barrières béton chantier"
+    },
+    {
+      "id": "portable_generator",
+      "res": "1k",
+      "role": "Groupe électrogène chantier"
+    },
+    {
+      "id": "tool_cart",
+      "res": "1k",
+      "role": "Servante d'atelier"
+    },
+    {
+      "id": "metal_toolbox",
+      "res": "1k",
+      "role": "Caisse à outils"
+    },
+    {
+      "id": "wooden_crate_01",
+      "res": "1k",
+      "role": "Caisses"
+    },
+    {
+      "id": "industrial_pastic_container",
+      "res": "1k",
+      "role": "Bidons"
+    },
+    {
+      "id": "propane_tank",
+      "res": "1k",
+      "role": "Bouteille de gaz"
+    },
+    {
+      "id": "street_lamp_01",
+      "res": "1k",
+      "role": "Éclairage de la base"
+    },
+    {
+      "id": "wooden_ladder",
+      "res": "1k",
+      "role": "Échelle"
+    }
+  ],
+  "ambientcg": [
+    {
+      "id": "Grass004",
+      "res": "1K",
+      "maps": [
+        "Color",
+        "NormalGL"
+      ],
+      "role": "Prairie"
+    }
+  ],
+  "direct": [],
   "dem": {
     "_doc": "Relief réel : tuiles d'altitude Terrarium (AWS Open Data, sources SRTM/Copernicus…). Zone : vallée de la Bruche, Vosges (ligne Strasbourg – Saint-Dié).",
-    "center": [48.5136, 7.2410],
+    "center": [
+      48.5136,
+      7.241
+    ],
     "zoom": 13,
     "radius_tiles": 1,
     "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
