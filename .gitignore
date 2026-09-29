@@ -226,3 +226,6 @@ video/hyperframes/assets/hdri/
 video/hyperframes/assets/textures/
 video/hyperframes/assets/models/
 video/**/audit/*/frames/
+simulator/assets/hdri/
+simulator/assets/textures/
+simulator/assets/models/

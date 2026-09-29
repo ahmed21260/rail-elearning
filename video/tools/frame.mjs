@@ -33,7 +33,7 @@ const t0 = Date.now();
 await page.goto(`http://localhost:${port}/index.html${process.env.Q ? "?" + process.env.Q : ""}`);
 await page.waitForFunction(() => window.__hf?.buildReady && Promise.all(Object.values(window.__hf.buildReady)).then(() => (window.__built = true)) && window.__built, null, { timeout: 300000, polling: 500 });
 console.log(`build ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-console.log("dbg", JSON.stringify(await page.evaluate(() => window.__dbg || null)));
+console.log("dbg", JSON.stringify(await page.evaluate(() => ({ ...(window.__dbg || {}), imp: window.__imp }))));
 for (const t of times) {
   const t1 = Date.now();
   await page.evaluate((t) => window.dispatchEvent(new CustomEvent("hf-seek", { detail: { time: t } })), Number(t));

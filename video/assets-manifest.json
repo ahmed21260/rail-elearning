@@ -1,23 +1,107 @@
 {
-  "_doc": "Assets open source (CC0) téléchargés par video/tools/fetch_assets.py dans video/hyperframes/assets/. Ajouter une entrée ici, relancer le script : ASSETS.md (crédits) est régénéré.",
+  "_doc": "Assets open source (CC0 : Poly Haven, ambientCG) téléchargés par video/tools/fetch_assets.py dans video/hyperframes/assets/. Ajouter une entrée ici, relancer le script : ASSETS.md (crédits) est régénéré.",
   "hdri": [
-    { "id": "kloofendal_48d_partly_cloudy_puresky", "res": "2k", "role": "Éclairage (environnement) et ciel", "tonemapped_max_width": 6144 }
+    {
+      "id": "kloofendal_48d_partly_cloudy_puresky",
+      "res": "2k",
+      "role": "Éclairage (environnement) et ciel",
+      "tonemapped_max_width": 6144
+    }
   ],
   "textures": [
-    { "id": "gravel_stones", "res": "2k", "maps": ["Diffuse", "nor_gl", "Rough"], "role": "Ballast de la voie" },
-    { "id": "sparse_grass", "res": "2k", "maps": ["Diffuse", "nor_gl"], "role": "Prairie / accotements" },
-    { "id": "brown_mud_dry", "res": "1k", "maps": ["Diffuse"], "role": "Champs labourés" },
-    { "id": "concrete_floor_worn_001", "res": "1k", "maps": ["Diffuse", "nor_gl"], "role": "Traverses béton" },
-    { "id": "rusty_metal_02", "res": "1k", "maps": ["Diffuse"], "role": "Flancs des rails (rouille)" }
+    {
+      "id": "gravel_stones",
+      "res": "2k",
+      "maps": [
+        "Diffuse",
+        "nor_gl",
+        "Rough"
+      ],
+      "role": "Ballast de la voie"
+    },
+    {
+      "id": "sparse_grass",
+      "res": "2k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Prairie / accotements"
+    },
+    {
+      "id": "brown_mud_dry",
+      "res": "1k",
+      "maps": [
+        "Diffuse"
+      ],
+      "role": "Champs labourés"
+    },
+    {
+      "id": "concrete_floor_worn_001",
+      "res": "1k",
+      "maps": [
+        "Diffuse",
+        "nor_gl"
+      ],
+      "role": "Traverses béton"
+    },
+    {
+      "id": "rusty_metal_02",
+      "res": "1k",
+      "maps": [
+        "Diffuse"
+      ],
+      "role": "Flancs des rails (rouille)"
+    }
   ],
   "texture_extras": [
-    { "id": "island_tree_02", "res": "1k", "maps": ["leaves_diff", "leaves_alpha", "branches_diff"], "role": "Feuillage des arbres (cartes alpha sur géométrie légère)" }
+    {
+      "id": "island_tree_02",
+      "res": "1k",
+      "maps": [
+        "leaves_diff",
+        "leaves_alpha",
+        "branches_diff"
+      ],
+      "role": "Feuillage des arbres (cartes alpha sur géométrie légère)"
+    }
   ],
   "models": [
-    { "id": "shrub_02", "res": "1k", "role": "Buissons talus" },
-    { "id": "shrub_03", "res": "1k", "role": "Buissons talus" },
-    { "id": "shrub_04", "res": "1k", "role": "Buissons talus" },
-    { "id": "grass_medium_02", "res": "1k", "role": "Touffes d'herbe au bord de la voie" },
-    { "id": "wild_rooibos_bush", "res": "1k", "role": "Végétation basse" }
+    {
+      "id": "shrub_02",
+      "res": "1k",
+      "role": "Buissons talus"
+    },
+    {
+      "id": "shrub_03",
+      "res": "1k",
+      "role": "Buissons talus"
+    },
+    {
+      "id": "shrub_04",
+      "res": "1k",
+      "role": "Buissons talus"
+    },
+    {
+      "id": "grass_medium_02",
+      "res": "1k",
+      "role": "Touffes d'herbe au bord de la voie"
+    },
+    {
+      "id": "wild_rooibos_bush",
+      "res": "1k",
+      "role": "Végétation basse"
+    }
+  ],
+  "ambientcg": [
+    {
+      "id": "Grass004",
+      "res": "1K",
+      "maps": [
+        "Color",
+        "NormalGL"
+      ],
+      "role": "Prairie verte (terrain)"
+    }
   ]
 }

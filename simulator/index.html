@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Simulateur de conduite</title>
+    <link rel="icon" href="data:," />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./assets/vendor/three.module.js",
+          "three/addons/": "./assets/vendor/addons/"
+        }
+      }
+    </script>
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-400-normal.woff2") format("woff2");
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-600-normal.woff2") format("woff2");
+        font-weight: 600;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-800-normal.woff2") format("woff2");
+        font-weight: 800;
+      }
+      :root {
+        --glass: rgba(9, 13, 21, 0.78);
+        --line: rgba(255, 255, 255, 0.14);
+        --ink: #f5f7fa;
+        --muted: #b9c3cf;
+        --accent: #5cc8ff;
+        --red: #ff4d3d;
+        --yellow: #ffc21a;
+        --green: #2ee57a;
+        --orange: #ff9a3c;
+        --u: clamp(11px, 0.9vw + 0.45vh, 18px);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b1220;
+        color: var(--ink);
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: var(--u);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      #gl {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .glass {
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 1em;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 0.8em;
+        padding: 0.7em 1.1em;
+        font-weight: 600;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      button.primary {
+        background: var(--accent);
+        color: #04111c;
+        border-color: transparent;
+      }
+      .red {
+        color: var(--red);
+      }
+      .green {
+        color: var(--green);
+      }
+      .yellow {
+        color: var(--yellow);
+      }
+      .blue {
+        color: var(--accent);
+      }
+
+      /* ---------- Écrans ---------- */
+      .screen {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: radial-gradient(ellipse at 30% 40%, rgba(4, 8, 14, 0.35), rgba(4, 8, 14, 0.85));
+        z-index: 20;
+      }
+      .panel {
+        width: min(760px, 100%);
+        max-height: 100%;
+        overflow: auto;
+        padding: 2em;
+      }
+      .kicker {
+        font-size: 0.9em;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        margin-top: 0.3em;
+        font-size: 2.6em;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      .panel p {
+        margin-top: 0.8em;
+        line-height: 1.5;
+        color: #dfe5ec;
+      }
+      .mission {
+        margin-top: 1.2em;
+        display: grid;
+        gap: 0.5em;
+      }
+      .mission li {
+        list-style: none;
+        display: flex;
+        gap: 0.7em;
+        align-items: center;
+        line-height: 1.35;
+      }
+      .dot {
+        flex: none;
+        width: 0.9em;
+        height: 0.9em;
+        border-radius: 50%;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7em;
+        margin-top: 1.4em;
+      }
+      .keys {
+        margin-top: 1.2em;
+        font-size: 0.9em;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      kbd {
+        display: inline-block;
+        min-width: 1.8em;
+        padding: 0.05em 0.45em;
+        border: 1px solid var(--line);
+        border-radius: 0.35em;
+        background: rgba(255, 255, 255, 0.07);
+        text-align: center;
+        font-family: inherit;
+        color: var(--ink);
+      }
+      .seg button {
+        padding: 0.45em 0.9em;
+      }
+      .seg button.on {
+        background: rgba(92, 200, 255, 0.2);
+        border-color: var(--accent);
+      }
+      .legal {
+        margin-top: 1.2em;
+        font-size: 0.8em;
+        color: var(--muted);
+      }
+      #loading .bar {
+        margin-top: 1.4em;
+        height: 0.5em;
+        border-radius: 1em;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+      }
+      #load-bar {
+        width: 0;
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.2s;
+      }
+      #end-title {
+        font-size: 2.4em;
+      }
+      #end-stars {
+        margin-top: 0.2em;
+        font-size: 2em;
+        color: var(--yellow);
+        letter-spacing: 0.1em;
+      }
+      #end-score {
+        font-size: 1.4em;
+        font-weight: 800;
+      }
+      .panel h3 {
+        margin-top: 1.3em;
+        font-size: 1em;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .panel ul {
+        margin-top: 0.5em;
+        padding-left: 1.1em;
+        line-height: 1.55;
+      }
+      .panel li.ok {
+        list-style: none;
+        margin-left: -1.1em;
+        color: var(--green);
+      }
+
+      /* ---------- Cabine ---------- */
+      #cab-frame {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #cab-frame svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* ---------- HUD ---------- */
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+      #hud > * {
+        pointer-events: auto;
+      }
+      #topbar {
+        position: absolute;
+        top: max(12px, env(safe-area-inset-top));
+        left: 12px;
+        right: 12px;
+        display: flex;
+        gap: 0.6em;
+        align-items: center;
+        flex-wrap: wrap;
+        pointer-events: none;
+      }
+      #topbar > * {
+        pointer-events: auto;
+      }
+      .chip {
+        padding: 0.55em 0.9em;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .chip b {
+        font-weight: 800;
+      }
+      .spacer {
+        flex: 1;
+      }
+      #next {
+        position: absolute;
+        top: calc(max(12px, env(safe-area-inset-top)) + 3.6em);
+        left: 12px;
+        padding: 0.8em 1em;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.2em 0.8em;
+        align-items: center;
+        min-width: 17em;
+      }
+      #next-dot {
+        grid-row: span 2;
+        width: 1.6em;
+        height: 1.6em;
+        border-radius: 50%;
+        box-shadow: 0 0 14px currentColor;
+      }
+      #next-dot.double {
+        box-shadow: 0.9em 0 0 -0.1em var(--red), 0 0 14px var(--red);
+        margin-right: 0.9em;
+      }
+      #next-name {
+        font-weight: 800;
+      }
+      #next-dist {
+        grid-row: span 2;
+        font-size: 1.5em;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+      #next-aspect {
+        color: var(--muted);
+        font-size: 0.9em;
+      }
+      #tip {
+        position: absolute;
+        left: 50%;
+        top: calc(max(12px, env(safe-area-inset-top)) + 3.6em);
+        transform: translateX(-50%);
+        max-width: min(40em, 60vw);
+        padding: 0.8em 1.2em;
+        border-left: 0.35em solid var(--accent);
+        font-weight: 600;
+        line-height: 1.35;
+        pointer-events: none;
+      }
+      #tip[data-tone="yellow"] {
+        border-left-color: var(--yellow);
+      }
+      #tip[data-tone="red"] {
+        border-left-color: var(--red);
+      }
+      #tip[data-tone="orange"] {
+        border-left-color: var(--orange);
+      }
+      #tip[data-tone="green"] {
+        border-left-color: var(--green);
+      }
+      #toasts {
+        position: absolute;
+        right: 12px;
+        top: calc(max(12px, env(safe-area-inset-top)) + 3.6em);
+        display: grid;
+        gap: 0.4em;
+        justify-items: end;
+        pointer-events: none;
+      }
+      .toast {
+        padding: 0.6em 0.9em;
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 0.8em;
+        font-weight: 600;
+        animation: pop 0.25s ease-out;
+      }
+      .toast.penalty {
+        border-color: var(--red);
+        color: #ffd2cc;
+      }
+      .toast.good {
+        border-color: var(--green);
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+      }
+
+      /* DMI : cadran de vitesse + schéma de ligne */
+      #dmi {
+        position: absolute;
+        left: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        display: flex;
+        gap: 0.7em;
+        align-items: flex-end;
+      }
+      #dial {
+        position: relative;
+        width: 12em;
+        height: 12em;
+        padding: 0.4em;
+        border-radius: 50%;
+      }
+      #dial svg {
+        width: 100%;
+        height: 100%;
+      }
+      #dial-ticks line {
+        stroke: #8a97a8;
+        stroke-width: 2;
+      }
+      #dial-ticks text {
+        fill: #b9c3cf;
+        font-size: 13px;
+        font-weight: 600;
+        text-anchor: middle;
+        font-family: Inter, sans-serif;
+      }
+      #speed {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 38%;
+        text-align: center;
+        font-size: 2.6em;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.03em;
+      }
+      #speed.warn {
+        color: var(--orange);
+      }
+      #dial .unit {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 64%;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85em;
+      }
+      #dial .lim {
+        position: absolute;
+        left: 50%;
+        bottom: 8%;
+        transform: translateX(-50%);
+        width: 2.4em;
+        height: 2.4em;
+        border-radius: 50%;
+        border: 0.25em solid var(--red);
+        background: #fff;
+        color: #111;
+        display: grid;
+        place-items: center;
+        font-size: 0.8em;
+        font-weight: 800;
+      }
+      #map {
+        padding: 0.7em 0.9em;
+        width: min(36em, 44vw);
+      }
+      #map svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      #map-signals line {
+        stroke: #aab4c0;
+        stroke-width: 2;
+      }
+      #map .legend {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.8em;
+        margin-top: 0.2em;
+      }
+
+      /* Manipulateur traction / freinage */
+      #controls {
+        position: absolute;
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        display: flex;
+        gap: 0.7em;
+        align-items: flex-end;
+      }
+      #lever {
+        width: 7.6em;
+        padding: 0.7em;
+        display: grid;
+        gap: 0.5em;
+        justify-items: center;
+      }
+      #lever-track {
+        position: relative;
+        width: 3.2em;
+        height: 13em;
+        border-radius: 1.6em;
+        background: linear-gradient(180deg, rgba(92, 200, 255, 0.35), rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.05) 55%, rgba(255, 194, 26, 0.35));
+        border: 1px solid var(--line);
+        touch-action: none;
+        cursor: ns-resize;
+      }
+      #lever-track::after {
+        content: "";
+        position: absolute;
+        left: -0.4em;
+        right: -0.4em;
+        top: 50%;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      #lever-thumb {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 4.2em;
+        height: 1.6em;
+        transform: translate(-50%, -50%);
+        border-radius: 0.6em;
+        background: linear-gradient(180deg, #e9eef3, #9aa6b3);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        z-index: 1;
+      }
+      .lv-t,
+      .lv-f {
+        font-size: 0.75em;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .lv-t {
+        color: var(--accent);
+      }
+      .lv-f {
+        color: var(--yellow);
+      }
+      #lever-label {
+        font-size: 0.85em;
+        font-weight: 800;
+        text-align: center;
+        min-height: 1.2em;
+      }
+      #buttons {
+        display: grid;
+        gap: 0.5em;
+      }
+      #buttons button {
+        width: 7.5em;
+        padding: 0.9em 0.4em;
+      }
+      #buttons button.active {
+        background: rgba(92, 200, 255, 0.3);
+      }
+      #btn-emergency {
+        background: #b3261e;
+        border-color: #ff6a5f;
+      }
+      @media (max-width: 760px), (max-height: 520px) {
+        #map {
+          display: none;
+        }
+        #tip {
+          top: auto;
+          bottom: calc(max(12px, env(safe-area-inset-bottom)) + 13em);
+          max-width: 80vw;
+        }
+        #next {
+          min-width: 0;
+        }
+      }
+      @media (hover: hover) and (pointer: fine) {
+        #btn-up,
+        #btn-down {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+
+    <div id="cab-frame" hidden>
+      <svg viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="dash" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1b212a" />
+            <stop offset="1" stop-color="#07090d" />
+          </linearGradient>
+          <linearGradient id="pillar" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#050608" />
+            <stop offset="1" stop-color="#151a21" />
+          </linearGradient>
+        </defs>
+        <path d="M0 0 H1920 V40 Q960 76 0 40 Z" fill="#07090c" />
+        <path d="M0 0 L120 0 L56 930 L0 930 Z" fill="url(#pillar)" />
+        <path d="M1920 0 L1800 0 L1864 930 L1920 930 Z" fill="url(#pillar)" />
+        <path d="M0 1080 V900 Q960 840 1920 900 V1080 Z" fill="url(#dash)" />
+        <path d="M0 900 Q960 840 1920 900" stroke="#3a4552" stroke-width="3" fill="none" />
+      </svg>
+    </div>
+
+    <div id="hud" hidden>
+      <div id="topbar">
+        <div class="chip glass">Ligne de Valmont · <b id="mode-name">Mission</b></div>
+        <div class="chip glass">Score <b id="score">100</b></div>
+        <div class="chip glass">⏱ <b id="time">0:00</b></div>
+        <div class="spacer"></div>
+        <button class="chip glass" id="cam-btn">Caméra : Cabine</button>
+        <button class="chip glass" id="sound-btn">Son : activé</button>
+        <button class="chip glass" id="pause-btn">Pause</button>
+      </div>
+      <div id="next" class="glass">
+        <div id="next-dot"></div>
+        <div id="next-name">—</div>
+        <div id="next-dist">— m</div>
+        <div id="next-aspect">—</div>
+      </div>
+      <div id="tip" class="glass" hidden></div>
+      <div id="toasts"></div>
+
+      <div id="dmi">
+        <div id="dial" class="glass">
+          <svg viewBox="0 0 220 220" aria-hidden="true">
+            <path id="dial-bg" stroke="#243142" stroke-width="12" fill="none" stroke-linecap="round" />
+            <path id="dial-curve" stroke="#ff9a3c" stroke-width="6" fill="none" />
+            <path id="dial-v" stroke="#5cc8ff" stroke-width="12" fill="none" stroke-linecap="round" />
+            <path id="dial-lim" stroke="#ff4d3d" stroke-width="5" />
+            <g id="dial-ticks"></g>
+          </svg>
+          <div id="speed">0</div>
+          <div class="unit">km/h</div>
+          <div class="lim" id="limit">140</div>
+        </div>
+        <div id="map" class="glass">
+          <svg viewBox="0 0 600 50" aria-hidden="true">
+            <line x1="16" y1="30" x2="584" y2="30" stroke="#5a6878" stroke-width="5" stroke-linecap="round" />
+            <g id="map-signals"></g>
+            <g id="map-train"><rect x="-22" y="24" width="22" height="12" rx="4" fill="#5cc8ff" /></g>
+          </svg>
+          <div class="legend"><span>Départ</span><span>Gare de Valmont</span></div>
+        </div>
+      </div>
+
+      <div id="controls">
+        <div id="buttons">
+          <button id="btn-up">▲ Traction</button>
+          <button id="btn-neutral">Neutre</button>
+          <button id="btn-down">▼ Frein</button>
+          <button id="btn-emergency">Urgence</button>
+        </div>
+        <div id="lever" class="glass">
+          <span class="lv-t">TRACTION</span>
+          <div id="lever-track"><div id="lever-thumb"></div></div>
+          <span class="lv-f">FREIN</span>
+          <div id="lever-label">Neutre</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="screen">
+      <div class="panel glass">
+        <div class="kicker">Rail E-Learning · Simulateur</div>
+        <h1>Conduite en ligne : lire la signalisation</h1>
+        <div class="bar"><div id="load-bar"></div></div>
+        <p id="load-text">Chargement des ressources…</p>
+      </div>
+    </div>
+
+    <div id="start" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker">Rail E-Learning · Simulateur 3D</div>
+        <h1>Conduite en ligne : lire la signalisation</h1>
+        <p>Vous conduisez un automoteur sur la ligne de Valmont (5,2 km, double voie électrifiée, 140 km/h). Respectez chaque signal et arrêtez la tête du train au <b>repère T</b> de la gare.</p>
+        <ul class="mission">
+          <li><span class="dot" style="background: var(--yellow)"></span><span><b>Avertissement</b> (feu jaune) : un signal d'arrêt suit, préparez l'arrêt.</span></li>
+          <li><span class="dot" style="background: var(--red)"></span><span><b>Carré</b> (2 feux rouges) : arrêt absolu avant le signal.</span></li>
+          <li><span class="dot" style="background: var(--red)"></span><span><b>Sémaphore</b> (1 feu rouge) : arrêt, le canton suivant est occupé.</span></li>
+          <li><span class="dot" style="background: var(--green)"></span><span><b>Voie libre</b> (feu vert) : vous pouvez circuler.</span></li>
+        </ul>
+        <div class="keys">
+          Clavier : <kbd>↑</kbd>/<kbd>Z</kbd> traction · <kbd>↓</kbd>/<kbd>S</kbd> frein · <kbd>N</kbd> neutre · <kbd>Espace</kbd> urgence · <kbd>C</kbd> caméra · <kbd>P</kbd> pause.
+          Tactile : glissez le manipulateur à droite. Faites glisser l'image pour regarder autour de vous en cabine.
+        </div>
+        <div class="row">
+          <button class="primary" id="go-guided">Mode guidé</button>
+          <button id="go-exam">Mode examen (sans conseils)</button>
+        </div>
+        <div class="row seg">
+          <span style="align-self: center; color: var(--muted)">Qualité graphique :</span>
+          <button data-q="high">Haute</button>
+          <button data-q="low">Économie (mobile)</button>
+        </div>
+        <p class="legal">Support pédagogique simplifié, distances raccourcies. Seuls les référentiels réglementaires en vigueur font foi.</p>
+      </div>
+    </div>
+
+    <div id="pause" class="screen" hidden>
+      <div class="panel glass">
+        <h1>Pause</h1>
+        <div class="row">
+          <button class="primary" id="resume">Reprendre</button>
+          <button id="restart">Recommencer</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="end" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker">Bilan de la mission</div>
+        <h1 id="end-title">Mission réussie</h1>
+        <div id="end-stars">★★★</div>
+        <div id="end-score">100 / 100</div>
+        <p id="end-reason"></p>
+        <h3>Fautes relevées</h3>
+        <ul id="end-list"></ul>
+        <h3>À retenir</h3>
+        <ul id="end-lessons"></ul>
+        <div class="row">
+          <button class="primary" id="retry">Recommencer</button>
+          <button id="menu">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="sim/main.js"></script>
+  </body>
+</html>

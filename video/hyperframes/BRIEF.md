@@ -33,7 +33,7 @@ avant le signal ⇒ le signal s'ouvre (vert) ⇒ je repars.
 | 13.5 s | L'avertissement apparaît : feu jaune | cabine, étiquette accrochée au signal | « Feu jaune : un signal d'arrêt est annoncé plus loin. » |
 | 20 s | Freinage, le carré est en vue | cabine, compteur qui descend | « Freinez pour pouvoir vous arrêter avant le signal. » |
 | 28 s | Train arrêté devant le carré fermé | orbite extérieure autour du signal | « Carré : arrêt absolu. Ne jamais le franchir sans autorisation. » |
-| 35.5 s | Le carré s'ouvre : feu vert | cabine | « Feu vert : voie libre, le train peut repartir. » |
+| 36.5 s | Le carré s'ouvre : feu vert | cabine | « Feu vert : voie libre, le train peut repartir. » |
 | 41 s | Redémarrage, passage du signal | cabine | compteur qui remonte |
 | 46 s | Récapitulatif | grue qui s'élève | 3 cartes « À retenir » + mention réglementaire |
 

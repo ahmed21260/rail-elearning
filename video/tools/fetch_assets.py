@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Télécharge les assets open source (Poly Haven, CC0) listés dans video/assets-manifest.json.
+"""Télécharge les assets open source (Poly Haven et ambientCG, CC0) listés dans video/assets-manifest.json.
 
-Usage : python3 video/tools/fetch_assets.py [--force]
-Sortie : video/hyperframes/assets/{hdri,textures,models}/ + video/hyperframes/assets/ASSETS.md
+Usage : python3 video/tools/fetch_assets.py [--force] [--dest <dossier assets>]
+Sortie (défaut) : video/hyperframes/assets/{hdri,textures,models}/ + ASSETS.md
+Simulateur     : --dest simulator/assets
 """
 import json
+import io
 import subprocess
 import sys
+import time
 import urllib.request
+import zipfile
 from pathlib import Path
 
 VIDEO = Path(__file__).resolve().parents[1]
-ASSETS = VIDEO / "hyperframes" / "assets"
+ASSETS = (Path(sys.argv[sys.argv.index("--dest") + 1]).resolve() if "--dest" in sys.argv else VIDEO / "hyperframes" / "assets")
 API = "https://api.polyhaven.com"
 UA = {"User-Agent": "rail-elearning-video/1.0"}
 FORCE = "--force" in sys.argv
@@ -22,14 +26,23 @@ def get_json(url):
         return json.load(r)
 
 
+def fetch(url):
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r:
+                return r.read()
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(2 ** attempt)
+
+
 def download(url, dest: Path):
     if dest.exists() and not FORCE:
         return "cache"
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r, open(tmp, "wb") as f:
-        while chunk := r.read(1 << 20):
-            f.write(chunk)
+    tmp.write_bytes(fetch(url))
     tmp.rename(dest)
     return f"{dest.stat().st_size // 1024} KB"
 
@@ -76,17 +89,31 @@ def main():
         print(f"model   {mdl['id']:<40} ok")
         ledger.append((mdl["id"], "Modèle glTF", mdl["role"], [f"{mdl['id']}/{mdl['id']}.gltf"]))
 
+    for a in manifest.get("ambientcg", []):
+        root = ASSETS / "textures" / a["id"]
+        names = [f"{a['id']}/{m}.jpg" for m in a["maps"]]
+        if FORCE or not all((ASSETS / "textures" / n).exists() for n in names):
+            z = zipfile.ZipFile(io.BytesIO(fetch(f"https://ambientcg.com/get?file={a['id']}_{a['res']}-JPG.zip")))
+            root.mkdir(parents=True, exist_ok=True)
+            for m in a["maps"]:
+                (root / f"{m}.jpg").write_bytes(z.read(f"{a['id']}_{a['res']}-JPG_{m}.jpg"))
+        print(f"texture {a['id'] + ' (ambientCG)':<40} ok")
+        ledger.append((a["id"], "Texture (ambientCG)", a["role"], names))
+
     lines = [
         "# Crédits des assets",
         "",
         "Fichier généré par `video/tools/fetch_assets.py` — ne pas éditer à la main.",
-        "Tous les assets ci-dessous proviennent de [Poly Haven](https://polyhaven.com) sous licence **CC0** (domaine public) :",
+        "Tous les assets ci-dessous proviennent de [Poly Haven](https://polyhaven.com) et [ambientCG](https://ambientcg.com) sous licence **CC0** (domaine public) :",
         "usage commercial libre, attribution non obligatoire mais faite ici.",
         "",
         "| Asset | Type | Auteur(s) | Rôle | Fichiers |",
         "|---|---|---|---|---|",
     ]
     for asset_id, kind, role, names in ledger:
+        if "ambientCG" in kind:
+            lines.append(f"| [{asset_id}](https://ambientcg.com/view?id={asset_id}) | {kind} | Lennart Demes (ambientCG) | {role} | {', '.join(names)} |")
+            continue
         name, authors = credit(asset_id)
         lines.append(f"| [{name}](https://polyhaven.com/a/{asset_id}) | {kind} | {authors} | {role} | {', '.join(names)} |")
     lines += ["", "Code tiers embarqué : three.js (MIT, `vendor/THREE_LICENSE`), GSAP (licence standard GreenSock), police Inter (SIL OFL 1.1)."]

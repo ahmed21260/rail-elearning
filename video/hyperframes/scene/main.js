@@ -173,9 +173,9 @@ function cameraAt(t) {
   const sF = story.trainS(t);
   let fov = 55;
   if (shot === "aerial") {
-    const u = t / story.CUTS[0];
-    P(130 + 22 * t, lerp(26, 15, ease(u)), lerp(34, 11, ease(u)), camera.position);
-    camera.lookAt(P(sF - 18, TRACK_LAT, 2, tmpA));
+    const u = ease(t / story.CUTS[0]);
+    P(sF + lerp(75, 20, u), lerp(24, 11, u), lerp(26, 7.5, u), camera.position);
+    camera.lookAt(P(sF - 14, TRACK_LAT, 2.2, tmpA));
     fov = 50;
   } else if (shot === "cab") {
     const v = story.trainV(t);
@@ -184,19 +184,11 @@ function cameraAt(t) {
     camera.lookAt(P(sF + 150, TRACK_LAT + 0.2, 1.6, tmpA));
     fov = 58;
   } else if (shot === "orbit") {
+    // Nez du train arrêté à droite, carré fermé au centre : on voit l'arrêt AVANT le signal.
     const u = ease((t - story.CUTS[1]) / (story.CUTS[2] - story.CUTS[1]));
-    const c = story.SIG.carre - 12;
-    const a = lerp(0.18, 0.95, u);
-    const R = lerp(24, 17, u);
-    const f = frame(c);
-    const center = P(c, TRACK_LAT - 1.2, 2.6, tmpA);
-    camera.position.set(
-      center.x - f.fx * Math.cos(a) * R - f.rx * Math.sin(a) * R,
-      lerp(3.4, 6.2, u),
-      center.z - f.fz * Math.cos(a) * R - f.rz * Math.sin(a) * R,
-    );
-    camera.lookAt(P(c + 6, TRACK_LAT - 1.6, 3.0, tmpB));
-    fov = 48;
+    P(lerp(story.S_STOP - 14, story.S_STOP + 2, u), lerp(TRACK_LAT - 11, TRACK_LAT - 9.5, u), lerp(3.6, 5.8, u), camera.position);
+    camera.lookAt(P(lerp(story.SIG.carre - 8, story.SIG.carre - 2, u), TRACK_LAT - 1.6, lerp(3.0, 3.4, u), tmpB));
+    fov = 50;
   } else {
     const u = ease((t - story.CUTS[3]) / (story.DURATION - story.CUTS[3]));
     P(sF - 34 + 6 * u, lerp(-12, -24, u), lerp(5, 34, u), camera.position);

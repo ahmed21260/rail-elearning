@@ -1,8 +1,10 @@
 // Décor : terrain, plateforme ferroviaire, caténaire, végétation, collines.
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { P, frame, sweep, matrixAt, rng, fbm, noise2, smooth } from "./path.js";
+import { P, frame, sweep, matrixAt, rng, fbm, noise2, smooth, S_MAX } from "./path.js";
 
+export const LINE_END = 5200;
+export const STATION = { from: 4700, to: 4940, stopMark: 4920, name: "VALMONT" };
 export const TRACK_LAT = -2.1; // voie empruntée (circulation à gauche)
 export const OTHER_LAT = 2.1;
 export const RAIL_HALF = 0.7535; // demi-entraxe des rails (écartement 1 435 mm + demi-champignon)
@@ -93,8 +95,8 @@ function buildTerrain(scene) {
   lats.push(...side);
   const ss = [];
   for (let s = -1600; s < -300; s += 20) ss.push(s);
-  for (let s = -300; s < 2200; s += 4) ss.push(s);
-  for (let s = 2200; s <= 3600; s += 20) ss.push(s);
+  for (let s = -300; s < LINE_END + 600; s += 4) ss.push(s);
+  for (let s = LINE_END + 600; s <= S_MAX; s += 20) ss.push(s);
 
   const nv = ss.length * lats.length;
   const pos = new Float32Array(nv * 3);
@@ -181,7 +183,7 @@ function buildTerrain(scene) {
 // ------------------------------------------------------------------------------------
 function buildTrackbed(scene) {
   const S0 = -400;
-  const S1 = 2400;
+  const S1 = LINE_END + 300;
   const gravel = new THREE.MeshStandardMaterial({
     map: tex("gravel_stones/Diffuse.jpg", { repeat: 0.9 }),
     normalMap: tex("gravel_stones/nor_gl.jpg", { srgb: false, repeat: 0.9 }),
@@ -228,7 +230,7 @@ function buildTrackbed(scene) {
     for (let s = S0; s < S1; s += 0.6) {
       const jitter = (r() - 0.5) * 0.02;
       sleepers.push({ s, m: matrixAt(new THREE.Matrix4(), s, tl, 0.07, jitter) });
-      if (s > -150 && s < 1400) {
+      if (s > -150 && s < LINE_END + 100) {
         for (const d of [-RAIL_HALF - 0.1, -RAIL_HALF + 0.1, RAIL_HALF - 0.1, RAIL_HALF + 0.1]) {
           clips.push({ s, m: matrixAt(new THREE.Matrix4(), s, tl + d, 0.21) });
         }
@@ -300,9 +302,10 @@ function buildCatenary(scene, avoid) {
     if (!chunks.has(k)) chunks.set(k, { key, list: [] });
     chunks.get(k).list.push(g);
   };
-  for (let s = MAST_S0; s < 2400; s += SPAN) {
+  for (let s = MAST_S0; s < LINE_END + 300; s += SPAN) {
     if (avoid.some((a) => Math.abs(a - s) < 8)) continue;
     for (const [mastLat, tl] of [[-6.1, TRACK_LAT], [6.1, OTHER_LAT]]) {
+      if (mastLat < 0 && s > STATION.from + 70 && s < STATION.from + 150) continue; // sous l'abri de quai
       const dir = Math.sign(tl - mastLat);
       const parts = [];
       // Poteau H (âme + semelles)
@@ -346,10 +349,10 @@ function buildCatenary(scene, avoid) {
       m.castShadow = true;
       scene.add(m);
     };
-    add(sweep({ s0: -400, s1: 2400, step: 3, lat: (s) => contactLat(s, tl), y: CONTACT_Y, profile: wire(0.014), closed: true }));
-    add(sweep({ s0: -400, s1: 2400, step: 3, lat: tl, y: (s) => sag(s, CONTACT_Y + 1.35, 0.9), profile: wire(0.012), closed: true }));
-    add(sweep({ s0: -400, s1: 2400, step: 3, lat: mastLat, y: (s) => sag(s, 8.3, 0.6), profile: wire(0.016), closed: true }));
-    for (let s = MAST_S0 + 4.5; s < 2400; s += 9) {
+    add(sweep({ s0: -400, s1: LINE_END + 300, step: 3, lat: (s) => contactLat(s, tl), y: CONTACT_Y, profile: wire(0.014), closed: true }));
+    add(sweep({ s0: -400, s1: LINE_END + 300, step: 3, lat: tl, y: (s) => sag(s, CONTACT_Y + 1.35, 0.9), profile: wire(0.012), closed: true }));
+    add(sweep({ s0: -400, s1: LINE_END + 300, step: 3, lat: mastLat, y: (s) => sag(s, 8.3, 0.6), profile: wire(0.016), closed: true }));
+    for (let s = MAST_S0 + 4.5; s < LINE_END + 300; s += 9) {
       if ((((s - MAST_S0) % SPAN) + SPAN) % SPAN < 3) continue;
       const top = sag(s, CONTACT_Y + 1.35, 0.9);
       const h = top - CONTACT_Y;
@@ -395,11 +398,6 @@ function makeImpostor(renderer, model, size = 512) {
   renderer.setRenderTarget(prevTarget);
   renderer.setClearColor(prevColor, prevAlpha);
   sc.remove(model);
-  const px = new Uint8Array(size * h * 4);
-  renderer.readRenderTargetPixels(rt, 0, 0, size, h, px);
-  let sum = [0, 0, 0, 0], n = 0;
-  for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { sum[0] += px[i]; sum[1] += px[i + 1]; sum[2] += px[i + 2]; n++; }
-  (window.__imp = window.__imp || []).push({ n, avg: sum.slice(0, 3).map((v) => Math.round(v / Math.max(n, 1))), size: [sz.x, sz.y, sz.z] });
   // Deux plans croisés, base à y = 0
   const a = new THREE.PlaneGeometry(1, sz.y / w);
   a.translate(0, sz.y / w / 2, 0);
@@ -447,16 +445,17 @@ function flatten(root) {
   return out;
 }
 
-function buildVegetation(renderer, scene, models) {
+function buildVegetation(renderer, scene, models, quality) {
   const shrub = prepModel(models.shrub_02);
   const bush = prepModel(models.wild_rooibos_bush);
   const grass = prepModel(models.grass_medium_02);
   const shrubVars = variants(shrub);
   const treeImps = shrubVars.map((v) => makeImpostor(renderer, v.clone()));
-  const bushImp = makeImpostor(renderer, bush.clone(), 256);
+  const bushImp = makeImpostor(renderer, shrubVars[1].clone(), 256);
   const grassImp = makeImpostor(renderer, grass.clone(), 256);
   // L'imposteur est déjà éclairé à sa génération : matériau non éclairé (+ brume), teinté par instance.
-  const impMat = (imp) => new THREE.MeshBasicMaterial({ map: imp.texture, alphaTest: 0.5, side: THREE.DoubleSide });
+  const impMat = (imp, gain = 1) =>
+    new THREE.MeshBasicMaterial({ map: imp.texture, alphaTest: 0.5, side: THREE.DoubleSide, color: new THREE.Color().setScalar(gain) });
 
   const r = rng(2024);
   const trees = treeImps.map(() => []);
@@ -477,7 +476,7 @@ function buildVegetation(renderer, scene, models) {
     trees[k].push({ s, m, c: new THREE.Color(tint * (0.9 + r() * 0.15), tint, tint * (0.8 + r() * 0.15)) });
   };
   // Haies et arbres en limite de parcelles
-  for (let s = -700; s < 2600; s += 7) {
+  for (let s = -700; s < LINE_END + 500; s += 7) {
     for (const sign of [-1, 1]) {
       for (let a = 26; a < 1200; a += 9 + r() * 6) {
         const lat = sign * a;
@@ -502,7 +501,8 @@ function buildVegetation(renderer, scene, models) {
   const nearBushes = [];
   const bushes = [];
   const tufts = [];
-  for (let s = -250; s < 1500; s += 3) {
+  const nearStep = quality === "low" ? 6 : 3;
+  for (let s = -250; s < LINE_END + 200; s += nearStep) {
     for (const sign of [-1, 1]) {
       if (r() < 0.16) {
         const lat = sign * (9.5 + r() * 12);
@@ -514,7 +514,8 @@ function buildVegetation(renderer, scene, models) {
         if (r() < 0.6) nearShrubs[Math.floor(r() * shrubParts.length)].push({ s, m });
         else nearBushes.push({ s, m });
       }
-      for (let k = 0; k < 2; k++) {
+      const onQuay = sign < 0 && s > STATION.from - 5 && s < STATION.to + 5;
+      for (let k = 0; k < (onQuay ? 0 : quality === "low" ? 1 : 2); k++) {
         const lat = sign * (5.6 + r() * 5);
         const sc = 0.5 + r() * 0.7;
         tufts.push({
@@ -545,15 +546,15 @@ function buildVegetation(renderer, scene, models) {
   shrubParts.forEach((part, k) => chunked(scene, part.geometry, part.material, nearShrubs[k], { chunk: 80, cast: true }));
   for (const part of bushParts) chunked(scene, part.geometry, part.material, nearBushes, { chunk: 80, cast: true });
   chunked(scene, bushImp.geometry, impMat(bushImp), bushes, { chunk: 120 });
-  chunked(scene, grassImp.geometry, impMat(grassImp), tufts, { chunk: 60 });
+  chunked(scene, grassImp.geometry, impMat(grassImp, 2.2), tufts, { chunk: 60 });
 }
 
 // ------------------------------------------------------------------------------------
 function buildHills(scene, horizon) {
-  const center = P(900, 0, 0);
+  const center = P(LINE_END / 2, 0, 0);
   for (const [R, hMin, hMax, top, seed] of [
-    [2300, 60, 230, new THREE.Color(0.12, 0.2, 0.13), 1],
-    [3300, 160, 480, new THREE.Color(0.22, 0.28, 0.36), 7],
+    [4300, 120, 380, new THREE.Color(0.12, 0.2, 0.13), 1],
+    [5600, 260, 720, new THREE.Color(0.22, 0.28, 0.36), 7],
   ]) {
     const n = 360;
     const pos = [];
@@ -588,23 +589,132 @@ function buildDetails(scene) {
   // Poteaux kilométriques (tous les 100 m) et armoire de signalisation près du carré
   const white = new THREE.MeshStandardMaterial({ color: 0xe8e8e2, roughness: 0.6 });
   const posts = [];
-  for (let s = -300; s < 2000; s += 100) posts.push({ s, m: matrixAt(new THREE.Matrix4(), s, -4.7, -0.1) });
+  for (let s = -300; s < LINE_END; s += 100) posts.push({ s, m: matrixAt(new THREE.Matrix4(), s, -4.7, -0.1) });
   chunked(scene, new THREE.BoxGeometry(0.12, 1.1, 0.12), white, posts, { chunk: 500, cast: true });
   const cab = new THREE.Mesh(
     new THREE.BoxGeometry(1.4, 1.7, 0.7),
     new THREE.MeshStandardMaterial({ color: 0xb4b8b4, roughness: 0.55, metalness: 0.3 }),
   );
-  P(846, -9.2, 0.25, cab.position);
-  cab.rotation.y = -frame(846).th;
+  P(1916, -9.2, 0.25, cab.position);
+  cab.rotation.y = -frame(1916).th;
   cab.castShadow = cab.receiveShadow = true;
   scene.add(cab);
 }
 
-export function buildWorld(renderer, scene, { models, horizon, signalS }) {
+export function buildWorld(renderer, scene, { models, horizon, signalS, quality = "high" }) {
   buildTerrain(scene);
   buildTrackbed(scene);
   buildCatenary(scene, signalS);
-  if (!new URLSearchParams(location.search).has("novege")) buildVegetation(renderer, scene, models);
+  buildVegetation(renderer, scene, models, quality);
   buildHills(scene, horizon);
   buildDetails(scene);
+  buildStation(scene);
+}
+
+// ------------------------------------------------------------------------------------
+// Gare fictive : quai à gauche (circulation à gauche), abri, nom de gare, repère d'arrêt.
+function canvasTex(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function buildStation(scene) {
+  const { from, to, stopMark, name } = STATION;
+  const top = RAIL_TOP_Y + 0.55;
+  const concrete = new THREE.MeshStandardMaterial({
+    map: tex("concrete_floor_worn_001/Diffuse.jpg", { repeat: 0.5 }),
+    normalMap: tex("concrete_floor_worn_001/nor_gl.jpg", { srgb: false, repeat: 0.5 }),
+    color: 0xd8d4cc,
+    roughness: 0.9,
+  });
+  const edge = TRACK_LAT - 1.65;
+  const quay = new THREE.Mesh(
+    sweep({ s0: from, s1: to, step: 4, profile: [[edge - 5.5, -0.8], [edge - 5.5, top], [edge, top], [edge, -0.8]] }),
+    concrete,
+  );
+  quay.receiveShadow = quay.castShadow = true;
+  scene.add(quay);
+  // Bande d'éveil de vigilance (blanche) le long de la bordure
+  const white = new THREE.MeshStandardMaterial({ color: 0xf1f1ea, roughness: 0.7 });
+  scene.add(new THREE.Mesh(sweep({ s0: from, s1: to, step: 4, profile: [[edge - 0.6, top + 0.005], [edge - 0.5, top + 0.005]] }), white));
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.6 });
+  scene.add(new THREE.Mesh(sweep({ s0: from, s1: to, step: 4, profile: [[edge - 0.35, top + 0.006], [edge - 0.08, top + 0.006]] }), yellow));
+
+  // Abri de quai (poteaux + toiture) et bancs
+  const steel = new THREE.MeshStandardMaterial({ color: 0x3d4650, roughness: 0.45, metalness: 0.7 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x6f8394, roughness: 0.35, metalness: 0.6, side: THREE.DoubleSide });
+  const parts = [];
+  const roofs = [];
+  for (let s = from + 80; s <= from + 140; s += 10) {
+    for (const d of [2.2, 4.4]) {
+      const g = new THREE.BoxGeometry(0.14, 3.2, 0.14);
+      g.translate(0, top + 1.6, 0);
+      const f = frame(s);
+      g.rotateY(-f.th);
+      g.translate(f.x + f.rx * (edge - d), 0, f.z + f.rz * (edge - d));
+      parts.push(g);
+    }
+  }
+  const roof = sweep({ s0: from + 77, s1: from + 143, step: 3, profile: [[edge - 5.0, top + 3.15], [edge - 5.0, top + 3.3], [edge - 1.8, top + 3.5], [edge - 1.8, top + 3.35]], closed: true });
+  roofs.push(roof);
+  const posts = new THREE.Mesh(mergeGeometries(parts), steel);
+  posts.castShadow = true;
+  scene.add(posts);
+  const roofMesh = new THREE.Mesh(roofs[0], roofMat);
+  roofMesh.castShadow = true;
+  scene.add(roofMesh);
+
+  // Panneau nom de gare
+  const nameTex = canvasTex(1024, 192, (g, w, h) => {
+    g.fillStyle = "#0f2f6b";
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#fff";
+    g.font = "800 120px Inter, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(name, w / 2, h / 2 + 6);
+  });
+  for (const s of [from + 40, from + 175]) {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.6, 0.06), [steel, steel, steel, steel, new THREE.MeshStandardMaterial({ map: nameTex }), new THREE.MeshStandardMaterial({ map: nameTex })]);
+    const f = frame(s);
+    board.position.copy(P(s, edge - 3.3, top + 2.6));
+    board.rotation.y = -f.th + Math.PI / 2;
+    scene.add(board);
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.3, 0.1), steel);
+    pole.position.copy(P(s, edge - 3.3, top + 1.15));
+    scene.add(pole);
+  }
+
+  // Repère d'arrêt de tête : panneau carré bleu à liseré blanc, face au conducteur
+  const markTex = canvasTex(256, 256, (g, w) => {
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, w, w);
+    g.fillStyle = "#1a4fb5";
+    g.fillRect(16, 16, w - 32, w - 32);
+    g.fillStyle = "#fff";
+    g.font = "800 150px Inter, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("T", w / 2, w / 2 + 8);
+  });
+  const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), new THREE.MeshStandardMaterial({ map: markTex, roughness: 0.5 }));
+  mark.position.copy(P(stopMark, edge - 0.9, top + 2.1));
+  mark.rotation.y = -frame(stopMark).th + Math.PI;
+  scene.add(mark);
+  const mp = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.1, 0.08), steel);
+  mp.position.copy(P(stopMark, edge - 0.9, top + 1.05));
+  scene.add(mp);
+
+  // Butoir en fin de ligne
+  const stop = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xc8352b, roughness: 0.6 }));
+  stop.position.copy(P(LINE_END + 20, TRACK_LAT, 0.8));
+  stop.rotation.y = -frame(LINE_END + 20).th;
+  stop.castShadow = true;
+  scene.add(stop);
 }
