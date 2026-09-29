@@ -1,0 +1,19 @@
+<!doctype html><html><body style="margin:0;background:#8aa">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { buildWorker } from "../src/vehicles/worker.js";
+const r=new THREE.WebGLRenderer({antialias:true}); r.setSize(1000,700); document.body.appendChild(r.domElement);
+r.toneMapping=THREE.ACESFilmicToneMapping; r.shadowMap.enabled=true;
+const s=new THREE.Scene(); s.background=new THREE.Color(0x9ab);
+s.add(new THREE.HemisphereLight(0xddeeff,0x445533,1.5)); const d=new THREE.DirectionalLight(0xffffff,2.5); d.position.set(3,5,4); d.castShadow=true; s.add(d);
+const g=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial({color:0x667755})); g.rotation.x=-Math.PI/2; g.receiveShadow=true; s.add(g);
+const c=new THREE.PerspectiveCamera(35,1000/700,0.1,100); c.position.set(0,1.3,5.5); c.lookAt(0,0.9,0);
+const gl=await new GLTFLoader().loadAsync("../assets/models/worker.glb");
+const a=buildWorker(s,gl,"agent"); a.st.x=-0.8; a.st.yaw=Math.PI*0.85; a.place(()=>0);
+const b=buildWorker(s,gl,"chef"); b.st.x=0.8; b.st.yaw=Math.PI*1.15; b.place(()=>0);
+const w=new URLSearchParams(location.search).get("speed")||0;
+for(let i=0;i<20;i++){a.animate(0.05,+w); b.animate(0.05,0);}
+r.render(s,c); window.done=true;
+</script></body></html>

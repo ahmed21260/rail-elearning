@@ -39,6 +39,7 @@ usage commercial libre, attribution non obligatoire mais faite ici.
 
 | Asset | Licence | Auteur | Rôle | Fichiers |
 |---|---|---|---|---|
+| [worker](https://github.com/mrdoob/three.js/tree/r181/examples/models/gltf) | Mixamo (Adobe) — personnage et animations utilisables librement dans un projet, via l'exemple three.js | Mixamo / three.js examples | Personnages 3D animés (agent de la voie, chef de chantier) | models/worker.glb |
 | [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) | Données ouvertes (voir attributions AWS / Mapzen) | SRTM, Copernicus et autres sources publiques | Relief réel | dem/*.png |
 
 Code tiers embarqué : three.js (MIT, `vendor/THREE_LICENSE`), GSAP (licence standard GreenSock), police Inter (SIL OFL 1.1).

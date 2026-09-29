@@ -1,7 +1,7 @@
 // Métier : conducteur·rice d'engins rail-route (pelle). Enraillement, circulation, chantier de dégarnissage,
 // limiteur de hauteur sous caténaire, gabarit de la voie contiguë en circulation.
 import * as THREE from "three";
-import { P, frame, project, trackY } from "../world/line.js";
+import { P, frame, project, trackY, sweep } from "../world/line.js";
 import { TRACK_LAT, OTHER_LAT, RAIL_TOP_Y, CONTACT_Y, contactLat, messengerY } from "../world/track.js";
 import { ENRAIL, WORKSITE } from "../world/depot.js";
 import { groundHeight } from "../world/terrain.js";
@@ -68,11 +68,24 @@ export function createExcavatorJob(ctx) {
       <div id="ex-lights"><span data-l="engine">MOTEUR</span><span data-l="brake">FREIN</span><span data-l="rail">RAIL</span><span data-l="limiter">LIMITEUR</span><span data-l="gauge">GABARIT V2</span></div>
     </div>
     <div id="ex-align" class="glass" hidden><b>Aide à l'enraillement</b><div>Décalage <span id="al-lat">—</span></div><div>Angle <span id="al-yaw">—</span></div><div id="al-ok"></div></div>
-    <div id="ex-top" class="glass"><svg viewBox="-60 -60 120 120"><rect x="-60" y="-60" width="120" height="120" fill="#0b1119"/><rect id="top-v2" x="-60" y="-60" width="120" height="120" fill="rgba(255,77,61,0.15)"/><line x1="-60" x2="60" id="top-gauge" stroke="#ff4d3d" stroke-dasharray="4 3"/><g id="top-machine"><rect x="-6" y="-14" width="12" height="28" rx="2" fill="#f2b705"/><line id="top-arm" x1="0" y1="0" x2="0" y2="-30" stroke="#f2b705" stroke-width="4"/></g></svg><div class="legend">Vue de dessus · rouge = gabarit voie 2</div></div>`);
+    <div id="ex-top"><div id="ex-top-view"></div><div class="legend"><span>Vue de dessus 3D</span><span class="red">▮ gabarit voie 2</span></div></div>`);
   ui.actions([["m", "Moteur"], ["v", "Enrailler"], ["b", "Frein"], ["t", "Travail"]]);
   ui.joysticks(true);
   const $ = (id) => document.getElementById(id);
   let camMode = "follow";
+  // Vue de dessus 3D : caméra dédiée + gabarit de la voie 2 visible uniquement dans cette vue (calque 1)
+  const topCam = new THREE.PerspectiveCamera(38, 1, 1, 400);
+  topCam.layers.enable(1);
+  const gaugeMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, fog: false });
+  const gaugeGroup = new THREE.Group();
+  for (const profile of [[[GAUGE_LAT, 0.45], [OTHER_LAT + 2.2, 0.45]], [[GAUGE_LAT, 0.3], [GAUGE_LAT, 6.2]]]) {
+    const g = new THREE.Mesh(sweep({ s0: 300, s1: 1200, step: 4, profile }), gaugeMat);
+    g.layers.set(1);
+    g.renderOrder = 5;
+    gaugeGroup.add(g);
+  }
+  world.scene.add(gaugeGroup);
+  ctx.core.inset = { el: $("ex-top-view"), cam: topCam };
   const tmp = new THREE.Vector3();
 
   function railPos(p) {
@@ -262,18 +275,15 @@ export function createExcavatorJob(ctx) {
         $("al-yaw").textContent = `${((al.yawErr * 180) / Math.PI).toFixed(1)}°`;
         $("al-ok").textContent = rr.canEnrail(ENRAIL) ? "✔ Prêt : appuie sur V" : "Tolérance : 0,35 m et 4,5°";
       }
-      // Vue de dessus (gabarit)
-      const f = frame(project(rr.x, rr.z, 30).s);
-      const scale = 5;
-      const gy = -(GAUGE_LAT - TRACK_LAT) * scale;
-      $("top-gauge").setAttribute("y1", gy);
-      $("top-gauge").setAttribute("y2", gy);
-      $("top-v2").setAttribute("height", 60 + gy);
-      const machineYaw = rr.yaw + f.th;
-      $("top-machine").setAttribute("transform", `translate(0 ${-(project(rr.x, rr.z, 30).lat - TRACK_LAT) * scale}) rotate(${(-(machineYaw) * 180) / Math.PI + 90})`);
-      const reach = Math.max(10, Math.hypot(tipRel.lat - project(rr.x, rr.z, 30).lat, tipRel.s - project(rr.x, rr.z, 30).s) * scale);
-      $("top-arm").setAttribute("y2", -reach);
-      $("top-arm").setAttribute("transform", `rotate(${(-ex.joints.swing * 180) / Math.PI})`);
+      // Vue de dessus 3D : axe de la voie vertical à l'écran, engin au centre
+      {
+        const f = frame(project(rr.x, rr.z, 30).s);
+        const c = ex.root.position;
+        topCam.position.set(c.x - f.fx * 9, c.y + 30, c.z - f.fz * 9);
+        topCam.up.set(f.fx, 0, f.fz);
+        topCam.lookAt(c.x + f.fx * 2, c.y, c.z + f.fz * 2);
+        gaugeMat.opacity = st.gauge ? 0.6 + 0.3 * Math.sin(m.st.t * 14) : 0.3;
+      }
       // Conseils
       let tip = null;
       if (m.is("moteur")) tip = "Démarre le moteur (M).";
@@ -318,6 +328,8 @@ export function createExcavatorJob(ctx) {
       for (const md of mounds) {
         world.scene.remove(md.g, md.mark);
       }
+      world.scene.remove(gaugeGroup);
+      ctx.core.inset = null;
       world.other.visible = false;
       world.depot.skipFill.scale.y = 0.001;
       audio.silence();

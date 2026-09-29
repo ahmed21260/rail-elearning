@@ -11,7 +11,7 @@ import { setupSky } from "../core/renderer.js";
 import { buildTrain } from "../vehicles/train.js";
 import { buildExcavator } from "../vehicles/excavator.js";
 import { buildNacelle } from "../vehicles/nacelle.js";
-import { buildAvatar } from "../vehicles/avatar.js";
+import { buildWorker } from "../vehicles/worker.js";
 import { SIGNALS, TIV, TRAIN_START } from "../jobs/train-rules.js";
 
 const MODELS = [
@@ -84,9 +84,10 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   progress("Tracé de la ligne et relief réel…", 0.05);
   initLine(await loadJSON("data/line.json"));
   await loadDEM(`${BASE}/dem`);
-  const [hdr, bgImg, ...mods] = await Promise.all([
+  const [hdr, bgImg, workerGltf, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),
     loadImage(`${BASE}/hdri/kloofendal_48d_partly_cloudy_puresky_bg.jpg`),
+    loadModel("worker.glb"),
     ...MODELS.map((m) => loadModel(m)),
     document.fonts.load("800 120px Inter"),
   ]);
@@ -133,12 +134,16 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   park(nac.rr, 348, -30);
   exc.rr.update(0, { throttle: 0, steer: 0 });
   nac.rr.update(0, { throttle: 0, steer: 0 });
-  const avatar = buildAvatar(scene);
+  // Personnages 3D : l'agent joué et le chef de chantier (point de rassemblement de la base)
+  const avatar = buildWorker(scene, workerGltf, "agent");
+  const chef = buildWorker(scene, workerGltf, "chef");
   const spawn = P(290, -52);
   Object.assign(avatar.st, { x: spawn.x, z: spawn.z, yaw: -frame(290).th - Math.PI / 2 });
+  const cp = P(296, -48);
+  Object.assign(chef.st, { x: cp.x, z: cp.z, yaw: Math.atan2(cp.x - spawn.x, cp.z - spawn.z) });
 
   await texturesReady();
   progress("Compilation des shaders…", 0.95);
   core.renderer.compile(scene, new THREE.PerspectiveCamera());
-  return { models, cat, depot, veg, signals, train, other, exc, nac, avatar, DEPOT };
+  return { models, cat, depot, veg, signals, train, other, exc, nac, avatar, chef, spawn, DEPOT };
 }

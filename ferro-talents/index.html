@@ -155,8 +155,9 @@
       #nc-progress div { height: 100%; width: 0; background: var(--green); }
       #ex-align { position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%); padding: 0.8em 1.1em; display: grid; gap: 0.2em; text-align: center; font-variant-numeric: tabular-nums; }
       #al-ok { color: var(--green); font-weight: 600; }
-      #ex-top { position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 12em; padding: 0.5em; }
-      #ex-top svg { width: 100%; display: block; border-radius: 0.5em; }
+      #ex-top { position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 17em; border-radius: 1em; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+      #ex-top-view { height: 15em; }
+      #ex-top .legend { margin: 0; padding: 0.45em 0.8em; background: var(--glass-2); }
       @media (pointer: coarse) { #ex-panel { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 9.8em); } #ex-top { display: none; } }
       @media (max-width: 760px), (max-height: 520px) {
         #checklist { display: none; } #t-map { display: none; }
@@ -165,6 +166,65 @@
       }
       #debrief-stars { font-size: 2em; color: var(--yellow); letter-spacing: 0.1em; margin-top: 0.2em; }
       #debrief-score { font-size: 1.4em; font-weight: 800; }
+
+      /* ----- Refonte : hub, briefing en étapes, cinématique, dialogue, zone dangereuse ----- */
+      #hub { place-items: stretch; padding: 0; background: linear-gradient(90deg, rgba(4, 8, 14, 0.92) 0%, rgba(4, 8, 14, 0.7) 45%, rgba(4, 8, 14, 0.15) 100%); }
+      .hub-wrap { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 1.2em; width: min(1240px, 100%); margin: 0 auto; padding: clamp(16px, 3vw, 40px); }
+      .hub-hero { max-width: 40em; }
+      .hub-hero h1 { font-size: clamp(1.9em, 1.8vw + 1.2vh + 0.4em, 3em); }
+      .hub-hero p { margin-top: 0.8em; line-height: 1.55; color: #dfe5ec; font-size: 1.05em; }
+      .cta { display: flex; gap: 0.7em; flex-wrap: wrap; margin-top: 1.4em; }
+      .cta .primary { font-size: 1.1em; padding: 0.85em 1.4em; box-shadow: 0 8px 30px rgba(255, 180, 0, 0.35); }
+      .card { position: relative; overflow: hidden; transition: transform 0.15s, border-color 0.15s; }
+      .card:hover { transform: translateY(-3px); border-color: rgba(255, 180, 0, 0.6); }
+      .card .ico { font-size: 2.2em; line-height: 1; }
+      .card .meta { display: flex; gap: 0.4em; flex-wrap: wrap; }
+      .card .safety-ok { color: var(--green); font-size: 0.85em; font-weight: 600; }
+      details.settings { color: var(--muted); } details.settings summary { cursor: pointer; font-weight: 600; }
+      details.settings .row { margin-top: 0.6em; }
+      .steps-nav { display: flex; gap: 0.4em; margin-top: 1.2em; border-bottom: 1px solid var(--line); }
+      .steps-nav button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 0.6em 0.9em; color: var(--muted); }
+      .steps-nav button.on { color: var(--ink); border-bottom-color: var(--accent); }
+      .steps-nav button.done::after { content: " ✔"; color: var(--green); }
+      .tab { margin-top: 1em; }
+      .scards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14em, 1fr)); gap: 0.8em; }
+      .scard { padding: 1em; border-radius: 0.9em; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-top: 0.3em solid var(--yellow); }
+      .scard .ico { font-size: 1.6em; } .scard h4 { margin-top: 0.3em; font-size: 1.02em; }
+      .scard p { margin-top: 0.4em !important; font-size: 0.92em; }
+      .scard .why { color: var(--muted); font-size: 0.85em !important; }
+      .quiz-q { margin-top: 1em; padding: 1em; border-radius: 0.9em; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+      .quiz-q h4 { font-size: 1em; line-height: 1.35; }
+      .quiz-q .choices { display: grid; gap: 0.4em; margin-top: 0.6em; }
+      .quiz-q .choices button { text-align: left; font-weight: 500; }
+      .quiz-q .choices button.good { background: rgba(46, 229, 122, 0.18); border-color: var(--green); }
+      .quiz-q .choices button.bad { background: rgba(255, 77, 61, 0.18); border-color: var(--red); }
+      .quiz-q .explain { margin-top: 0.5em !important; font-size: 0.9em; color: var(--muted); }
+      #brief-status { color: var(--muted); font-size: 0.9em; }
+      /* Cinématique */
+      #cine { position: fixed; inset: 0; z-index: 25; pointer-events: none; }
+      #cine::before, #cine::after { content: ""; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+      #cine::before { top: 0; } #cine::after { bottom: 0; }
+      #cine-cap { position: absolute; left: 0; right: 0; bottom: calc(11vh + 1.4em); text-align: center; font-size: clamp(1.1em, 1.6vw + 0.5em, 2em); font-weight: 800; letter-spacing: -0.01em; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8); padding: 0 1em; }
+      #cine-skip { position: absolute; right: 16px; bottom: calc(11vh + 1em); pointer-events: auto; }
+      /* Dialogue */
+      #talk { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(52em, calc(100% - 32px)); z-index: 26; padding: 1.1em 1.3em; display: grid; grid-template-columns: auto 1fr; gap: 0.2em 1em; }
+      #talk .avatar { grid-row: span 2; width: 3.4em; height: 3.4em; border-radius: 50%; background: var(--yellow); color: #111; display: grid; place-items: center; font-weight: 800; font-size: 1.3em; }
+      #talk-who { font-weight: 800; } #talk-role { color: var(--muted); font-weight: 600; margin-left: 0.5em; font-size: 0.9em; }
+      #talk-text { line-height: 1.5; font-size: 1.05em; }
+      #talk-ppe { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5em, 1fr)); gap: 0.4em; margin-top: 0.6em; }
+      .ppe { display: flex; gap: 0.5em; align-items: center; text-align: left; font-weight: 500; }
+      .ppe span { font-size: 1.3em; }
+      .ppe[aria-pressed="true"] { background: rgba(255, 180, 0, 0.2); border-color: var(--accent); }
+      .ppe.bad { border-color: var(--red); }
+      #talk-feedback { grid-column: 1 / -1; color: #ffb4ab; font-weight: 600; min-height: 0; }
+      #talk .row { grid-column: 1 / -1; margin-top: 0.5em; justify-content: flex-end; }
+      /* Zone dangereuse */
+      #danger { position: fixed; inset: 0; pointer-events: none; z-index: 9; box-shadow: inset 0 0 18vmin rgba(255, 30, 20, 0.55); animation: pulse 0.9s ease-in-out infinite alternate; }
+      #danger-banner { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 3.6em); transform: translateX(-50%); padding: 0.7em 1.2em; background: #b3261e; border: 1px solid #ff8a80; border-radius: 0.8em; font-weight: 800; white-space: nowrap; }
+      @keyframes pulse { from { opacity: 0.55; } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { #danger { animation: none; } }
+      #safety-chip.warn { border-color: var(--red); color: #ffd2cc; }
+      @media (max-width: 760px) { #talk { grid-template-columns: 1fr; } #talk .avatar { display: none; } #danger-banner { white-space: normal; width: 90vw; text-align: center; } }
     </style>
   </head>
   <body>
@@ -174,6 +234,7 @@
       <div id="topbar">
         <div class="chip glass" id="where">Base travaux · Vallée de la Bruche</div>
         <div class="chip glass" id="score-chip" hidden>Score <b id="score">100</b></div>
+        <div class="chip glass" id="safety-chip" hidden>Intrusions zone dangereuse : <b id="intrusions">0</b></div>
         <div class="spacer"></div>
         <button class="chip glass" id="cam-btn">Caméra</button>
         <button class="chip glass" id="sound-btn">Son : activé</button>
@@ -207,34 +268,49 @@
     </div>
 
     <div id="hub" class="screen" hidden>
-      <div class="panel glass">
-        <div class="kicker">Ferro Talents</div>
-        <h1>Découvre les métiers du ferroviaire en les pratiquant</h1>
-        <p>Une ligne de 5,8 km tracée sur le relief réel de la vallée de la Bruche. Explore la base travaux à pied, monte dans un engin et essaie le métier, avec ses vraies procédures de sécurité.</p>
-        <div class="cards" id="cards"></div>
-        <div class="row seg">
-          <span style="color: var(--muted)">Mode :</span>
-          <button data-guided="1" class="on">Guidé (conseils)</button>
-          <button data-guided="0">Examen</button>
-          <span style="color: var(--muted); margin-left: 1em">Graphismes :</span>
-          <button data-q="low">Économie</button>
-          <button data-q="high">Haute</button>
-          <button data-q="ultra">Ultra</button>
+      <div class="hub-wrap">
+        <div class="hub-hero">
+          <div class="kicker">Ferro Talents</div>
+          <h1>Découvre les métiers du ferroviaire en les pratiquant</h1>
+          <p>Une vraie ligne de 5,8 km tracée sur le relief de la vallée de la Bruche. Arrive sur la base travaux, fais ton accueil sécurité avec le chef de chantier, puis prends les commandes d'un train, d'une pelle ou d'une nacelle rail-route.</p>
+          <div class="cta"><button class="primary" id="hub-start">Arriver sur la base</button><button id="hub-replay" hidden>Revoir l'accueil sécurité</button></div>
         </div>
-        <p class="legal">Simulation pédagogique simplifiée : procédures et distances adaptées au jeu. Seuls les référentiels réglementaires des entreprises ferroviaires font foi.</p>
+        <div class="cards" id="cards"></div>
+        <details class="settings glass" style="padding: 0.8em 1em">
+          <summary>Réglages</summary>
+          <div class="row seg">
+            <span>Mode :</span>
+            <button data-guided="1" class="on">Guidé (conseils)</button>
+            <button data-guided="0">Examen</button>
+            <span style="margin-left: 1em">Graphismes :</span>
+            <button data-q="low">Économie</button>
+            <button data-q="high">Haute</button>
+            <button data-q="ultra">Ultra</button>
+          </div>
+          <p class="legal">Simulation pédagogique simplifiée : procédures et distances adaptées au jeu. Seuls les référentiels réglementaires des entreprises ferroviaires font foi. Crédits des assets : Poly Haven, ambientCG (CC0), personnage Mixamo (Adobe), relief AWS Terrain Tiles.</p>
+        </details>
       </div>
     </div>
 
     <div id="brief" class="screen" hidden>
-      <div class="panel glass">
+      <div class="panel glass" style="width: min(980px, 100%)">
         <div class="kicker" id="brief-kicker">Mission</div>
         <h1 id="brief-title"></h1>
-        <p id="brief-pitch"></p>
-        <h3>Déroulé</h3>
-        <ol id="brief-steps"></ol>
-        <h3>Commandes</h3>
-        <p id="brief-keys" style="color: var(--muted)"></p>
-        <div class="row"><button class="primary" id="brief-go">Prendre le poste</button><button id="brief-back">Retour</button></div>
+        <nav class="steps-nav" id="brief-nav">
+          <button data-tab="0" class="on">1 · La mission</button>
+          <button data-tab="1">2 · Points sécurité</button>
+          <button data-tab="2">3 · Quiz</button>
+        </nav>
+        <section class="tab" data-tab="0">
+          <p id="brief-pitch"></p>
+          <h3>Déroulé</h3>
+          <ol id="brief-steps"></ol>
+          <h3>Commandes</h3>
+          <p id="brief-keys" style="color: var(--muted)"></p>
+        </section>
+        <section class="tab" data-tab="1" hidden><div class="scards" id="brief-cards"></div></section>
+        <section class="tab" data-tab="2" hidden><div id="brief-quiz"></div></section>
+        <div class="row"><button id="brief-back">Retour</button><span class="spacer"></span><span id="brief-status"></span><button id="brief-next" class="primary">Suivant</button><button class="primary" id="brief-go" hidden>Prendre le poste</button></div>
       </div>
     </div>
 
@@ -249,9 +325,32 @@
         <ul id="debrief-faults"></ul>
         <h3>À retenir</h3>
         <ul id="debrief-lessons"></ul>
+        <h3>Sécurité</h3>
+        <p id="debrief-safety"></p>
         <h3>Le métier</h3>
         <p id="debrief-job"></p>
         <div class="row"><button class="primary" id="debrief-retry">Recommencer</button><button id="debrief-world">Retour à la base</button><button id="debrief-hub">Autres métiers</button></div>
+      </div>
+    </div>
+
+    <div id="cine" hidden><div id="cine-cap"></div><button id="cine-skip" class="glass">Passer la cinématique ›</button></div>
+    <div id="talk" class="glass" hidden>
+      <div class="avatar">K</div>
+      <div id="talk-who"><span id="talk-name"></span><span id="talk-role"></span></div>
+      <div id="talk-text"></div>
+      <div id="talk-ppe" hidden></div>
+      <div id="talk-feedback"></div>
+      <div class="row"><button id="talk-skip">Passer l'accueil</button><button class="primary" id="talk-next">Continuer</button></div>
+    </div>
+    <div id="danger" hidden><div id="danger-banner"></div></div>
+    <div id="caught" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker red">Accident évité… de justesse</div>
+        <h1>Tu étais dans la zone dangereuse</h1>
+        <p id="caught-text"></p>
+        <h3>À retenir</h3>
+        <ul><li>La zone dangereuse s'étend jusqu'à 1,50 m du rail extérieur (jusqu'à 160 km/h).</li><li>À l'annonce d'une circulation, on se dégage immédiatement, sans attendre de voir le train.</li><li>On ne marche jamais le long des voies en dehors des cheminements balisés.</li></ul>
+        <div class="row"><button class="primary" id="caught-ok">Reprendre au point de rassemblement</button></div>
       </div>
     </div>
 

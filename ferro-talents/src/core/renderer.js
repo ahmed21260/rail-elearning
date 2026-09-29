@@ -65,6 +65,25 @@ export function createRenderer(canvas, scene, camera) {
   addEventListener("resize", resize);
 
   const tmp = new THREE.Vector3();
+  function renderInset({ el, cam }) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || el.offsetParent === null) return;
+    const H = renderer.domElement.clientHeight;
+    cam.aspect = r.width / r.height;
+    cam.updateProjectionMatrix();
+    renderer.setScissorTest(true);
+    renderer.setScissor(r.left, H - r.bottom, r.width, r.height);
+    renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
+    const au = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false; // ombres déjà calculées pour la vue principale
+    const fog = scene.fog;
+    scene.fog = null;
+    renderer.render(scene, cam);
+    scene.fog = fog;
+    renderer.shadowMap.autoUpdate = au;
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, innerWidth, innerHeight);
+  }
   const sunDir = new THREE.Vector3(0.5, 0.7, 0.3).normalize();
   return {
     renderer,
@@ -81,7 +100,10 @@ export function createRenderer(canvas, scene, camera) {
       sun.position.copy(focus).addScaledVector(sunDir, 500);
       if (composer) composer.render();
       else renderer.render(scene, camera);
+      if (this.inset) renderInset(this.inset);
     },
+    /** Vue secondaire 3D (ex. vue de dessus) rendue dans le rectangle d'un élément HTML. */
+    inset: null,
   };
 }
 

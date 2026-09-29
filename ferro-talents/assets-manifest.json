@@ -197,7 +197,17 @@
       "role": "Prairie"
     }
   ],
-  "direct": [],
+  "direct": [
+    {
+      "id": "worker",
+      "url": "https://raw.githubusercontent.com/mrdoob/three.js/r181/examples/models/gltf/Xbot.glb",
+      "dest": "models/worker.glb",
+      "license": "Mixamo (Adobe) — personnage et animations utilisables librement dans un projet, via l'exemple three.js",
+      "author": "Mixamo / three.js examples",
+      "source": "https://github.com/mrdoob/three.js/tree/r181/examples/models/gltf",
+      "role": "Personnages 3D animés (agent de la voie, chef de chantier)"
+    }
+  ],
   "dem": {
     "_doc": "Relief réel : tuiles d'altitude Terrarium (AWS Open Data, sources SRTM/Copernicus…). Zone : vallée de la Bruche, Vosges (ligne Strasbourg – Saint-Dié).",
     "center": [

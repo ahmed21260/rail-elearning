@@ -16,6 +16,9 @@ import { EXC } from "./vehicles/excavator.js";
 const EXC_TRANSPORT = EXC.transport;
 import { createNacelleJob, NAC_JOB } from "./jobs/nacelle.js";
 import { stars } from "./jobs/common.js";
+import { SAFETY, ON_FOOT } from "./safety/content.js";
+import { createExplore } from "./game/explore.js";
+import { createIntro } from "./game/intro.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -43,9 +46,9 @@ const core = createRenderer($("gl"), scene, camera);
 core.setQuality(quality);
 const audio = createAudio();
 const JOBS = [
-  { def: TRAIN_JOB, make: createTrainJob },
-  { def: EXC_JOB, make: createExcavatorJob },
-  { def: NAC_JOB, make: createNacelleJob },
+  { def: TRAIN_JOB, make: createTrainJob, icon: "🚆", time: "≈ 8 min", level: "Intermédiaire" },
+  { def: EXC_JOB, make: createExcavatorJob, icon: "🚜", time: "≈ 10 min", level: "Avancé" },
+  { def: NAC_JOB, make: createNacelleJob, icon: "🏗️", time: "≈ 10 min", level: "Avancé" },
 ];
 
 // ------------------------------------------------------------------------------------
@@ -159,7 +162,9 @@ $("gl").addEventListener("wheel", (e) => (rig.o.dist = Math.max(3, Math.min(120,
 
 // ------------------------------------------------------------------------------------
 let world = null;
-let state = "loading"; // loading | hub | brief | world | job | debrief
+let state = "loading"; // loading | hub | intro | brief | world | caught | job | debrief
+let explore = null;
+let intro = null;
 let job = null;
 let jobEntry = null;
 let endTimer = 0;
@@ -207,35 +212,120 @@ function resetVehicles() {
 
 function showHub() {
   state = "hub";
-  for (const id of ["brief", "debrief", "loading"]) $(id).hidden = true;
+  for (const id of ["brief", "debrief", "loading", "caught", "cine", "talk", "danger"]) $(id).hidden = true;
   $("hub").hidden = false;
   $("hud").hidden = true;
+  explore?.exit();
   const best = store.get("best", {});
-  $("cards").innerHTML =
-    `<div class="card explore"><div class="tag">Monde ouvert</div><h2>Explorer la base travaux</h2><p class="grow">Promène-toi dans la vallée, rencontre les engins et choisis ton métier en montant à bord.</p><button class="primary" data-explore>Explorer à pied</button></div>` +
-    JOBS.map(
-      ({ def }) => `<div class="card"><div class="tag">${def.vehicle}</div><h2>${def.title}</h2><p class="grow">${def.pitch}</p><div class="stars">${"★".repeat(best[def.id] || 0)}${"☆".repeat(3 - (best[def.id] || 0))}</div><button class="primary" data-job="${def.id}">Essayer ce métier</button></div>`,
-    ).join("");
+  const quiz = store.get("quiz", {});
+  const welcomed = store.get("welcomed", false);
+  $("hub-start").textContent = welcomed ? "Explorer la base à pied" : "Arriver sur la base";
+  $("hub-replay").hidden = !welcomed;
+  $("cards").innerHTML = JOBS.map(
+    ({ def, icon, time, level }) => `<div class="card"><div class="ico">${icon}</div><div class="tag">${def.vehicle}</div><h2>${def.title}</h2><p class="grow">${def.pitch}</p><div class="meta"><span class="pill">${time}</span><span class="pill">${level}</span></div>${quiz[def.id] ? `<div class="safety-ok">✔ Quiz sécurité validé (${quiz[def.id]}/3)</div>` : ""}<div class="stars" aria-label="${best[def.id] || 0} étoiles sur 3">${"★".repeat(best[def.id] || 0)}${"☆".repeat(3 - (best[def.id] || 0))}</div><button class="primary" data-job="${def.id}">Essayer ce métier</button></div>`,
+  ).join("");
   for (const b of $("cards").querySelectorAll("[data-job]")) b.addEventListener("click", () => showBrief(JOBS.find((j) => j.def.id === b.dataset.job)));
-  $("cards").querySelector("[data-explore]").addEventListener("click", () => enterWorld());
 }
+$("hub-start").addEventListener("click", () => enterWorld());
+$("hub-replay").addEventListener("click", () => startIntro());
+
+// Briefing en trois étapes : mission, points sécurité, quiz (obligatoire avant de prendre le poste)
+let briefTab = 0;
+let quizState = null;
+function briefShowTab(i) {
+  briefTab = i;
+  for (const b of $("brief-nav").querySelectorAll("button")) b.classList.toggle("on", +b.dataset.tab === i);
+  for (const t of $("brief").querySelectorAll("section.tab")) t.hidden = +t.dataset.tab !== i;
+  const passed = quizState.done && quizState.score >= 2;
+  $("brief-next").hidden = i === 2;
+  $("brief-go").hidden = i !== 2;
+  $("brief-go").disabled = !passed;
+  $("brief-status").textContent = i === 2 ? (passed ? `Quiz validé : ${quizState.score}/3` : quizState.done ? "Moins de 2 bonnes réponses : relis les points sécurité et recommence." : "Réponds aux 3 questions pour prendre le poste.") : "";
+  $("brief-nav").querySelector('[data-tab="2"]').classList.toggle("done", passed);
+}
+function renderQuiz(entry) {
+  const qs = SAFETY[entry.def.id].quiz;
+  $("brief-quiz").innerHTML = qs
+    .map((q, i) => `<div class="quiz-q" data-i="${i}"><h4>${i + 1}. ${q.q}</h4><div class="choices">${q.choices.map((c, k) => `<button data-k="${k}">${c}</button>`).join("")}</div><p class="explain" hidden></p></div>`)
+    .join("");
+  for (const box of $("brief-quiz").querySelectorAll(".quiz-q")) {
+    const i = +box.dataset.i;
+    for (const b of box.querySelectorAll("button")) {
+      b.addEventListener("click", () => {
+        if (quizState.answers[i] !== undefined) return;
+        const k = +b.dataset.k;
+        quizState.answers[i] = k;
+        const ok = k === qs[i].answer;
+        b.classList.add(ok ? "good" : "bad");
+        box.querySelector(`[data-k="${qs[i].answer}"]`).classList.add("good");
+        box.querySelector(".explain").hidden = false;
+        box.querySelector(".explain").textContent = `${ok ? "✔ Exact." : "✘ Non."} ${qs[i].explain}`;
+        audio.beep(ok ? 1320 : 440, 0.12, 0.08, "sine");
+        if (quizState.answers.filter((a) => a !== undefined).length === qs.length) {
+          quizState.done = true;
+          quizState.score = quizState.answers.filter((a, j) => a === qs[j].answer).length;
+          if (quizState.score < 2) setTimeout(() => { quizState = { answers: [], done: false, score: 0 }; renderQuiz(entry); briefShowTab(2); }, 2600);
+          else store.set("quiz", { ...store.get("quiz", {}), [entry.def.id]: quizState.score });
+        }
+        briefShowTab(2);
+      });
+    }
+  }
+}
+for (const b of $("brief-nav").querySelectorAll("button")) b.addEventListener("click", () => briefShowTab(+b.dataset.tab));
+$("brief-next").addEventListener("click", () => briefShowTab(Math.min(2, briefTab + 1)));
 
 function showBrief(entry) {
   state = "brief";
   jobEntry = entry;
-  $("hub").hidden = true;
+  explore?.exit();
+  for (const id of ["hub", "debrief", "danger"]) $(id).hidden = true;
   $("brief").hidden = false;
+  $("hud").hidden = true;
   $("brief-kicker").textContent = `Mission · ${entry.def.vehicle}`;
-  $("brief-title").textContent = entry.def.title;
+  $("brief-title").textContent = `${entry.icon} ${entry.def.title}`;
   $("brief-pitch").textContent = entry.def.pitch;
   $("brief-steps").innerHTML = entry.def.brief.map((b) => `<li>${b}</li>`).join("");
   $("brief-keys").textContent = entry.def.keys;
+  $("brief-cards").innerHTML = SAFETY[entry.def.id].cards.map((c) => `<div class="scard"><div class="ico">${c.icon}</div><h4>${c.title}</h4><p>${c.rule}</p><p class="why">Pourquoi : ${c.why}</p></div>`).join("");
+  const prev = store.get("quiz", {})[entry.def.id];
+  quizState = prev ? { answers: [], done: true, score: prev } : { answers: [], done: false, score: 0 };
+  renderQuiz(entry);
+  if (prev) $("brief-quiz").insertAdjacentHTML("afterbegin", `<p class="safety-ok" style="color: var(--green)">Quiz déjà validé (${prev}/3). Tu peux le refaire ou prendre le poste.</p>`);
+  briefShowTab(0);
 }
 
-function enterWorld(near) {
+function startIntro() {
+  audio.start();
+  state = "intro";
+  for (const id of ["hub", "brief", "debrief", "caught"]) $(id).hidden = true;
+  $("hud").hidden = true;
+  const av = world.avatar;
+  Object.assign(av.st, { x: world.spawn.x, z: world.spawn.z, speed: 0 });
+  av.visible = true;
+  av.place(walkHeight);
+  explore.reset();
+  intro = createIntro({
+    world,
+    camera,
+    audio,
+    explore,
+    onDone() {
+      store.set("welcomed", true);
+      intro = null;
+      enterWorld(null, true);
+    },
+  });
+}
+
+function enterWorld(near, afterIntro = false) {
+  if (!near && !afterIntro && !store.get("welcomed", false)) return startIntro();
   audio.start();
   state = "world";
-  for (const id of ["hub", "brief", "debrief"]) $(id).hidden = true;
+  for (const id of ["hub", "brief", "debrief", "caught", "cine", "talk"]) $(id).hidden = true;
+  explore.reset();
+  $("safety-chip").hidden = false;
+  $("intrusions").textContent = explore.st.intrusions;
   $("hud").hidden = false;
   $("score-chip").hidden = true;
   $("checklist").hidden = true;
@@ -243,7 +333,7 @@ function enterWorld(near) {
   ui.actions([["e", "Interagir"]]);
   ui.joysticks(coarse);
   ui.lever(false);
-  ui.tip({ tone: "blue", text: "Déplace-toi (ZQSD / flèches, Maj pour courir), fais glisser pour tourner la vue. Approche-toi d'un engin et appuie sur E." });
+  ui.tip({ tone: "blue", text: "Déplace-toi (ZQSD / flèches, Maj pour courir), fais glisser pour tourner la vue. Approche-toi d'un engin et appuie sur E. Reste hors de la zone rouge des voies !" });
   setTimeout(() => state === "world" && ui.tip(null), 9000);
   world.avatar.visible = true;
   if (near) {
@@ -263,9 +353,12 @@ function startJob(entry) {
   $("score-chip").hidden = false;
   $("prompt").hidden = true;
   world.avatar.visible = false;
+  explore.exit();
+  $("danger").hidden = true;
+  $("safety-chip").hidden = true;
   ui.lever(false);
   ui.joysticks(false);
-  job = entry.make({ world, ui, input, audio, camera, guided, lever });
+  job = entry.make({ world, ui, input, audio, camera, guided, lever, core });
   job.camMode = job.cams[0];
   rig.look = { yaw: 0, pitch: 0 };
   rig.o = { yaw: 0.8, pitch: 0.35, dist: 16 };
@@ -295,6 +388,8 @@ function endJob() {
   $("debrief-reason").textContent = ok ? res.extra || "" : m.failReason;
   $("debrief-faults").innerHTML = m.penalties.length ? m.penalties.map((p) => `<li><b>−${p.pts}</b> ${p.text}</li>`).join("") : `<li class="green">Aucune faute : procédure respectée.</li>`;
   $("debrief-lessons").innerHTML = res.lessons.map(([a, b]) => `<li><b>${a}</b> — ${b}</li>`).join("");
+  const qz = store.get("quiz", {})[jobEntry.def.id];
+  $("debrief-safety").textContent = qz ? `Quiz sécurité validé : ${qz}/3 bonnes réponses.` : "Quiz sécurité non passé.";
   $("debrief-job").innerHTML = `<b>Compétences :</b> ${jobEntry.def.skills.join(" · ")}<br><b>Accès au métier :</b> ${jobEntry.def.access}`;
   job.exit();
   job = null;
@@ -302,7 +397,11 @@ function endJob() {
 }
 
 $("brief-go").addEventListener("click", () => startJob(jobEntry));
-$("brief-back").addEventListener("click", () => (world.avatar.root.visible ? enterWorld() : showHub()));
+$("brief-back").addEventListener("click", () => (store.get("welcomed", false) && world.avatar.root.visible ? enterWorld(world.avatar.root.position) : showHub()));
+$("caught-ok").addEventListener("click", () => {
+  Object.assign(world.avatar.st, { x: world.spawn.x, z: world.spawn.z, speed: 0 });
+  enterWorld(null, true);
+});
 $("debrief-retry").addEventListener("click", () => showBrief(jobEntry));
 $("debrief-world").addEventListener("click", () => enterWorld(vehicleSpots().find((v) => v.job === jobEntry).pos));
 $("debrief-hub").addEventListener("click", showHub);
@@ -355,7 +454,13 @@ function loop() {
       $("cam-btn").textContent = `Caméra : ${camName(job.camMode)}`;
     }
   }
-  if (state === "world") {
+  world.chef.place(walkHeight);
+  if (state !== "intro") world.chef.animate(dt, 0);
+  if (state === "intro") {
+    if (input.hit("Escape")) intro.skip();
+    intro.update(dt);
+    explore.update(dt, world.avatar.root.position, false);
+  } else if (state === "world") {
     const move = {
       fwd: input.axis(["ArrowDown", "s"], ["ArrowUp", "z", "w"], "L", "y"),
       side: input.axis(["ArrowLeft", "q", "a"], ["ArrowRight", "d"], "L", "x"),
@@ -375,6 +480,20 @@ function loop() {
     $("prompt").hidden = !near;
     if (near) $("prompt").innerHTML = `<kbd>E</kbd> Prendre le poste : <b>${spot.job.def.title}</b>`;
     if (near && input.hit("e")) showBrief(spot.job);
+    // Zone dangereuse et circulations
+    const ex = explore.update(dt, av.root.position, true);
+    $("danger").hidden = !ex.inZone && !ex.announced;
+    if (!$("danger").hidden) $("danger-banner").textContent = ex.announced ? ON_FOOT.train : ON_FOOT.enter;
+    $("danger").style.boxShadow = ex.inZone ? "" : "none";
+    $("intrusions").textContent = explore.st.intrusions;
+    $("safety-chip").classList.toggle("warn", ex.inZone);
+    if (explore.st.caught) {
+      state = "caught";
+      $("danger").hidden = true;
+      $("caught-text").textContent = ON_FOOT.caught;
+      $("caught").hidden = false;
+      audio.horn(1.6);
+    }
     const q = project(av.st.x, av.st.z, 200);
     $("where").textContent = q.d < 150 ? `Vallée de la Bruche · PK ${(q.s / 1000).toFixed(3)}` : "Vallée de la Bruche";
   } else if (state === "job") {
@@ -387,6 +506,9 @@ function loop() {
       endTimer += dt;
       if (endTimer > 1.8) endJob();
     }
+  } else if (state === "caught") {
+    explore.update(dt, world.avatar.root.position, true);
+    rig.orbit(world.avatar.root.position.clone().add(new THREE.Vector3(0, 1.5, 0)));
   } else {
     // Menus : lent travelling au-dessus de la base
     const t = clock.elapsedTime * 0.03;
@@ -412,6 +534,7 @@ buildWorld(core, scene, quality, (text, k) => {
 })
   .then((w) => {
     world = { ...w, scene };
+    explore = createExplore({ world, ui, audio });
     resetVehicles();
     $("loading").hidden = true;
     showHub();
@@ -444,6 +567,15 @@ window.__ft = {
     if (job) for (let i = 0; i < 40; i++) job.camera(0.25, rig);
   },
   enterWorld,
+  startIntro,
+  showBrief: (id) => showBrief(JOBS.find((j) => j.def.id === id)),
+  get intro() {
+    return intro;
+  },
+  get explore() {
+    return explore;
+  },
+  store,
   showHub,
   endJob,
   rig,

@@ -16,7 +16,7 @@ const ftRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const root = process.env.DIST ? path.join(ftRoot, "dist") : ftRoot;
 const args = process.argv.slice(2);
 const out = args.find((a) => !a.startsWith("--"));
-const only = (args.find((a) => a.startsWith("--only="))?.slice(7) || "train,pelle,nacelle").split(",");
+const only = (args.find((a) => a.startsWith("--only="))?.slice(7) || "accueil,train,pelle,nacelle").split(",");
 const types = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".gltf": "model/gltf+json", ".glb": "model/gltf-binary" };
 const server = http.createServer((req, res) => {
   const f = path.join(root, decodeURIComponent(req.url.split("?")[0]).replace(/^\/$/, "/index.html"));
@@ -57,6 +57,51 @@ const shot = async (name) => {
 };
 if (!loadErr) {
   await shot("00-hub");
+  // Clic DOM direct : le rendu logiciel est trop lent pour les contrôles de stabilité de Playwright
+  const click = (sel) => page.evaluate((q) => document.querySelector(q).click(), sel);
+  if (only.includes("accueil")) {
+    // Arrivée : cinématique, accueil sécurité (EPI, zone dangereuse), circulation voie 2, quiz
+    await page.evaluate(() => { window.__ft.startIntro(); for (let i = 0; i < 80; i++) window.__ft.intro.update(0.1); });
+    check(await page.evaluate(() => window.__ft.state === "intro" && window.__ft.intro.phase === "cine"), "accueil : la cinématique démarre");
+    await shot("02-cinematique");
+    await page.evaluate(() => { for (let i = 0; i < 120; i++) window.__ft.intro?.update(0.1); });
+    check(await page.evaluate(() => window.__ft.intro.phase === "talk" && !document.getElementById("talk").hidden), "accueil : le chef de chantier prend la parole");
+    await click("#talk-next");
+    await click("#talk-next"); // EPI : rien de sélectionné
+    check(await page.evaluate(() => document.getElementById("talk-feedback").textContent.includes("manque")), "accueil : tenue incomplète refusée");
+    for (const id of ["casque", "hv", "chaussures", "gants", "lunettes"]) await click(`.ppe[data-id="${id}"]`);
+    await click("#talk-next");
+    check(await page.evaluate(() => window.__ft.explore.st.highlight === 1), "accueil : zone dangereuse mise en évidence");
+    await page.evaluate(() => { for (let i = 0; i < 30; i++) window.__ft.intro.update(0.1); });
+    await shot("03-zone-dangereuse");
+    while (await page.evaluate(() => window.__ft.state === "intro")) await click("#talk-next");
+    check(await page.evaluate(() => window.__ft.state === "world" && window.__ft.store.get("welcomed")), "accueil : exploration libre après l'accueil");
+    const zone = await page.evaluate(() => {
+      const F = window.__ft, P = window.__ftP, av = F.world.avatar;
+      const at = (s, lat) => { const p = P(s, lat); Object.assign(av.st, { x: p.x, z: p.z }); av.place(() => 0); return F.explore.update(0.05, av.root.position, true).inZone; };
+      const r = { between: at(600, 0), rail: at(600, -2.1), edge: at(600, -4.2), out: at(600, -4.6), far: at(600, -20) };
+      at(600, 2.1);
+      F.explore.st.next = F.explore.st.t;
+      for (let i = 0; i < 4000 && !F.explore.st.caught; i++) F.explore.update(0.05, av.root.position, true);
+      r.caught = F.explore.st.caught;
+      return r;
+    });
+    console.log("zone dangereuse :", JSON.stringify(zone));
+    check(zone.between && zone.rail && zone.edge && !zone.out && !zone.far, "zone dangereuse : 1,50 m du rail extérieur");
+    check(zone.caught, "zone dangereuse : agent pris au passage du train sur la voie 2");
+    await page.waitForFunction(() => window.__ft.state === "caught", null, { timeout: 60000 });
+    await shot("04-accident-evite");
+    await click("#caught-ok");
+    const quiz = await page.evaluate(async () => {
+      const F = window.__ft; F.showBrief("pelle");
+      document.querySelector('#brief-nav [data-tab="2"]').click();
+      const before = document.getElementById("brief-go").disabled;
+      for (const [i, k] of [[0, 1], [1, 1], [2, 1]]) document.querySelector(`.quiz-q[data-i="${i}"] [data-k="${k}"]`).click();
+      return { before, after: document.getElementById("brief-go").disabled, saved: F.store.get("quiz", {}).pelle };
+    });
+    check(quiz.before && !quiz.after && quiz.saved === 3, `quiz sécurité : poste débloqué après 3/3 (${JSON.stringify(quiz)})`);
+    await shot("05-quiz");
+  } else await page.evaluate(() => window.__ft.store.set("welcomed", true));
   await page.evaluate(() => window.__ft.enterWorld());
   await shot("01-monde-a-pied");
   // Pas de simulation temporelle : on appelle update() du métier en accéléré, touches simulées
