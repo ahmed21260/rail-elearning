@@ -107,14 +107,37 @@ function horizonColor(img) {
 
 let world = null;
 
+/** HDR : fichier .hdr, ou .hdr.b64.txt (base64) quand l'hébergeur ne sert pas les binaires. */
+const fetchB64 = async (url) => Uint8Array.from(atob((await (await fetch(url)).text()).trim()), (c) => c.charCodeAt(0)).buffer;
+
+async function loadHDR(url) {
+  const loader = new HDRLoader().setDataType(THREE.FloatType);
+  if (!url.endsWith(".b64.txt")) return loader.loadAsync(url);
+  const d = loader.parse(await fetchB64(url)); // décodé en mémoire : aucune requête data:/blob:
+  const t = new THREE.DataTexture(d.data, d.width, d.height, THREE.RGBAFormat, d.type);
+  Object.assign(t, { flipY: true, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false, colorSpace: THREE.LinearSRGBColorSpace });
+  t.needsUpdate = true;
+  return t;
+}
+
+/** glTF : fichier .gltf classique, ou { json, bin } avec le tampon en base64 fourni au chargeur. */
+async function loadModel(src) {
+  const loader = new GLTFLoader();
+  if (typeof src === "string") return loader.loadAsync(src);
+  const [json, bin] = await Promise.all([fetch(src.json).then((r) => r.text()), fetchB64(src.bin)]);
+  loader.register(() => ({ name: "preloaded_buffer", loadBuffer: (i) => (i === 0 ? Promise.resolve(bin) : null) }));
+  return new Promise((ok, ko) => loader.parse(json, src.json.slice(0, src.json.lastIndexOf("/") + 1), ok, ko));
+}
+const ASSET = window.SIM_ASSETS || { hdr: `assets/hdri/${HDRI}_2k.hdr`, model: (n) => `assets/models/${n}/${n}.gltf` };
+
 async function build() {
   applyQuality();
   const gltf = new GLTFLoader();
   const names = ["shrub_02", "wild_rooibos_bush", "grass_medium_02"];
   const [hdr, bgImg, ...gl] = await Promise.all([
-    new HDRLoader().setDataType(THREE.FloatType).loadAsync(`assets/hdri/${HDRI}_2k.hdr`),
+    loadHDR(ASSET.hdr),
     loadImage(`assets/hdri/${HDRI}_bg.jpg`),
-    ...names.map((n) => gltf.loadAsync(`assets/models/${n}/${n}.gltf`)),
+    ...names.map((n) => loadModel(ASSET.model(n))),
     document.fonts.load("800 120px Inter"),
   ]);
   const models = Object.fromEntries(names.map((n, i) => [n, gl[i]]));

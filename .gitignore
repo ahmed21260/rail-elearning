@@ -229,3 +229,4 @@ video/**/audit/*/frames/
 simulator/assets/hdri/
 simulator/assets/textures/
 simulator/assets/models/
+simulator/dist/
