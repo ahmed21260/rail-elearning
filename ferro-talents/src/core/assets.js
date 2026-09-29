@@ -65,6 +65,13 @@ export async function loadModel(id) {
   const loader = new GLTFLoader();
   if (id.endsWith(".glb")) {
     if (!CFG) return loader.loadAsync(`${BASE}/models/${id}`);
+    // Version web : les GLB à textures sont éclatés en .gltf.json + tampon + images (voir build_web.py)
+    if (id.startsWith("sf/")) {
+      const name = id.slice(3, -4);
+      const dir = `${BASE}/models/sf/${name}/`;
+      const [json, bin] = await Promise.all([fetch(`${dir}${name}.gltf.json`).then((r) => r.json()), fetchB64(`${dir}${name}.bin.b64.txt`)]);
+      return new Promise((ok, ko) => loader.parse(toGLB(json, bin), dir, ok, ko));
+    }
     const bin = await fetchB64(`${BASE}/models/${id}.b64.txt`);
     return new Promise((ok, ko) => loader.parse(bin, `${BASE}/models/`, ok, ko));
   }

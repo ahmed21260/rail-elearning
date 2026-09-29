@@ -17,12 +17,15 @@ const root = process.env.DIST ? path.join(ftRoot, "dist") : ftRoot;
 const args = process.argv.slice(2);
 const out = args.find((a) => !a.startsWith("--"));
 const only = (args.find((a) => a.startsWith("--only="))?.slice(7) || "accueil,train,pelle,nacelle").split(",");
-const types = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".gltf": "model/gltf+json", ".glb": "model/gltf-binary" };
+const types = { ".html": "text/html; charset=utf-8", ".webp": "image/webp", ".js": "text/javascript", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".woff2": "font/woff2", ".gltf": "model/gltf+json", ".glb": "model/gltf-binary" };
 const server = http.createServer((req, res) => {
   const f = path.join(root, decodeURIComponent(req.url.split("?")[0]).replace(/^\/$/, "/index.html"));
   fs.readFile(f, (e, d) => {
     if (e) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { "content-type": types[path.extname(f)] || "application/octet-stream" });
+    const headers = { "content-type": types[path.extname(f)] || "application/octet-stream" };
+    // Version web : CSP stricte comme sur l'hébergeur (pas de blob:), pour détecter les textures bloquées
+    if (process.env.DIST) headers["content-security-policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' data: https://cdn.jsdelivr.net; font-src 'self' data:";
+    res.writeHead(200, headers);
     res.end(d);
   });
 }).listen(0);
