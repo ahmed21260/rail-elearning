@@ -11,5 +11,4 @@
 | [Angers Shop 1 [France]](https://sketchfab.com/3d-models/angers-shop-1-france-ec891e10fe26403aa072173bb89861bb) | Lost Gecko | CC BY 4.0 | Maison du village | models/sf/maison_angers_1.glb |
 | [Gare Saint Rémy (Saint Rémy Train Station)](https://sketchfab.com/3d-models/gare-saint-remy-saint-remy-train-station-7631ad326ac94572abfb6626c17f6878) | Batton | CC BY 4.0 | Bâtiment voyageurs de la gare de Valbruche | models/sf/gare_saint_remy.glb |
 | [Birch tree](https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172) | evolveduk | CC BY 4.0 | Bouleaux des lisières | models/sf/bouleau.glb |
-| [Portique Catenaire](https://sketchfab.com/3d-models/portique-catenaire-594f7b180dc9479faa32fac1d761cea8) | Immersive Studio | CC BY 4.0 | Référence de portique caténaire (étude) | models/sf/portique_catenaire.glb |
 | [Pine Tree [Game-ready]](https://sketchfab.com/3d-models/pine-tree-game-ready-dc3fbd9205cf4027a4455d1f415e0478) | Wenedi (^-^)/ | CC BY 4.0 | Conifères des forêts vosgiennes | models/sf/pin.glb |

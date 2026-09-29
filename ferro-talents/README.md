@@ -11,6 +11,15 @@ python3 video/tools/fetch_assets.py --manifest ferro-talents/assets-manifest.jso
 python3 -m http.server -d ferro-talents 8080     # puis http://localhost:8080
 ```
 
+Modèles réalistes Sketchfab (CC BY, optionnels : sans eux le jeu utilise les versions procédurales) :
+
+```bash
+npm i -g @gltf-transform/cli        # compression des textures (WebP 1024 px)
+SKETCHFAB_TOKEN=<ton jeton> python3 ferro-talents/tools/sketchfab.py fetch   # liste : ferro-talents/sketchfab.json
+```
+
+Le jeton n'est jamais écrit dans le dépôt ; les crédits sont générés dans `assets/SKETCHFAB.md`.
+
 Qualité : `?q=low` (mobile), `?q=high`, `?q=ultra` (occlusion ambiante).
 Version web publiable : `python3 ferro-talents/tools/build_web.py` → `ferro-talents/dist/`.
 
@@ -49,6 +58,13 @@ Version web publiable : `python3 ferro-talents/tools/build_web.py` → `ferro-ta
 - Terrassements automatiques (talus 3/2, fossés), sol par occupation (prairies, champs,
   forêts de coteau), arbres procéduraux (écorce + feuilles scannées) avec vent et LOD,
   herbe dense, props Poly Haven.
+
+## Audit technique
+
+```bash
+Q=low node ferro-talents/tools/audit.mjs [captures]          # couleurs, espaces colorimétriques, fuites
+NORENDER=1 BREAKDOWN=1 Q=high node ferro-talents/tools/audit.mjs   # charge GPU sans rendu, par matériau
+```
 
 ## Tests
 
