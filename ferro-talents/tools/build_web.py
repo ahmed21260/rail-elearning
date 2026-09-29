@@ -22,6 +22,8 @@ shutil.copytree(FT / "data", DIST / "data")
 A = FT / "assets"
 D = DIST / "assets"
 shutil.copytree(A / "dem", D / "dem")
+if (A / "dem_ign").exists():
+    shutil.copytree(A / "dem_ign", D / "dem_ign")
 (D / "hdri").mkdir(parents=True)
 hid = "kloofendal_48d_partly_cloudy_puresky"
 shutil.copy(A / "hdri" / f"{hid}_bg.jpg", D / "hdri" / f"{hid}_bg.jpg")

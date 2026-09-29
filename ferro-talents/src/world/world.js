@@ -1,6 +1,6 @@
 // Assemblage du monde : relief réel, voie, caténaire, base travaux, végétation, signaux, engins.
 import * as THREE from "three";
-import { initLine, lineLength, frame, P, fbm } from "./line.js";
+import { initLine, lineLength, frame, P, fbm, LINE } from "./line.js";
 import { loadDEM, buildTerrain, dem, worldHalf } from "./terrain.js";
 import { buildTrack, TRACK_LAT } from "./track.js";
 import { declarePads, buildDepot, isFree, DEPOT, ENRAIL } from "./depot.js";
@@ -87,7 +87,7 @@ function buildHorizon(scene, horizon) {
 export async function buildWorld(core, scene, quality, progress = () => {}) {
   progress("Tracé de la ligne et relief réel…", 0.05);
   initLine(await loadJSON("data/line.json"));
-  await loadDEM(`${BASE}/dem`);
+  await loadDEM(`${BASE}/${LINE.dem.base || "dem"}`); // MNT IGN RGE ALTI (LiDAR HD) si présent
   const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null))));
   const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, pin, bouleau, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),

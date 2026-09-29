@@ -26,6 +26,16 @@ export function tex(path, { srgb = true, repeat = 1, aniso = 8 } = {}) {
 }
 export const texturesReady = () => Promise.all(pending);
 
+/** Texture hors du dossier textures/ (ex. orthophoto IGN), suivie comme les autres ; pas de répétition. */
+export function texAt(url, { srgb = true } = {}) {
+  let done;
+  pending.push(new Promise((ok, ko) => (done = [ok, ko])));
+  const t = texLoader.load(url, () => done[0](), undefined, () => done[1](new Error(url)));
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
 /** Assemble un conteneur GLB en mémoire (JSON + tampon binaire) : aucun fichier .bin à servir. */
 function toGLB(json, bin) {
   const j = { ...json, buffers: [{ byteLength: bin.byteLength }] };

@@ -1,7 +1,7 @@
 // Relief réel (MNT Terrarium) + terrassements de la plateforme + sol texturé par occupation.
 import * as THREE from "three";
 import { LINE, lineLength, frame, trackY, project, noise2, fbm, smooth } from "./line.js";
-import { tex } from "../core/assets.js";
+import { tex, texAt, BASE } from "../core/assets.js";
 
 let H = null; // Float32Array N×N
 let N = 0;
@@ -173,13 +173,17 @@ function terrainMaterial() {
     forestMap: tex("forest_leaves_02/Diffuse.jpg"),
     gravelMap: tex("gravel_road/Diffuse.jpg"),
   };
+  // Orthophoto IGN (vraie couleur du sol, vue du ciel) si le relief réel est présent
+  const ortho = LINE.dem.base === "dem_ign" ? texAt(`${BASE}/dem_ign/ortho.jpg`) : null;
   mat.onBeforeCompile = (sh) => {
     for (const [k, v] of Object.entries(maps)) sh.uniforms[k] = { value: v };
+    sh.uniforms.orthoMap = { value: ortho };
+    sh.uniforms.uOrthoSize = { value: N * PX };
     sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec3 splat;\nvarying vec3 vSplat;")
-      .replace("#include <uv_vertex>", "#include <uv_vertex>\nvSplat = splat;");
+      .replace("#include <common>", "#include <common>\nattribute vec3 splat;\nvarying vec3 vSplat;\nvarying vec2 vGround;")
+      .replace("#include <uv_vertex>", "#include <uv_vertex>\nvSplat = splat;\nvGround = position.xz;");
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform sampler2D mudMap, forestMap, gravelMap;\nvarying vec3 vSplat;")
+      .replace("#include <common>", `#include <common>\nuniform sampler2D mudMap, forestMap, gravelMap;\nvarying vec3 vSplat;\nvarying vec2 vGround;\n${ortho ? "#define USE_ORTHO\nuniform sampler2D orthoMap;\nuniform float uOrthoSize;" : ""}`)
       .replace(
         "#include <map_fragment>",
         `#ifdef USE_MAP
@@ -198,6 +202,20 @@ function terrainMaterial() {
           // Sous forêt : sol sombre et verdâtre (lu de loin comme une canopée)
           c = mix( c, forC * vec4( 0.46, 0.62, 0.36, 1.0 ), kf );
           c = mix( c, grvC, kg );
+          #ifdef USE_ORTHO
+            // Photo aérienne réelle : remplace le sol au loin, teinte les textures de près
+            vec3 o = texture2D( orthoMap, vec2( vGround.x / uOrthoSize + 0.5, 0.5 - vGround.y / uOrthoSize ) ).rgb; // image : nord en haut (flipY)
+            float far = smoothstep( 70.0, 420.0, length( vViewPosition ) );
+            float lo = dot( o, vec3( 0.3, 0.59, 0.11 ) ) + 1e-3;
+            float lc = dot( c.rgb, vec3( 0.3, 0.59, 0.11 ) ) + 1e-3;
+            vec3 nearC = mix( c.rgb, o * ( lc / lo ), 0.45 * ( 1.0 - kg ) );
+            #ifdef USE_COLOR
+              vec3 farC = o * 1.15 / max( vColor.rgb, vec3( 0.25 ) ); // annule la teinte procédurale appliquée ensuite
+            #else
+              vec3 farC = o * 1.15;
+            #endif
+            c.rgb = mix( nearC, farC, far * ( 1.0 - kg ) );
+          #endif
           diffuseColor *= c;
         #endif`,
       );
@@ -266,7 +284,8 @@ export function buildTerrain(scene, quality) {
   scene.add(m1);
 
   // Grande grille (MNT) ; abaissée sous la bande pour éviter les chevauchements
-  const stride = quality === "low" ? 2 : 1;
+  // Grille lointaine ≈ 1 024 (haute) / 768 (économie) sommets de côté, quelle que soit la finesse du MNT
+  const stride = Math.max(1, Math.round(N / (quality === "low" ? 768 : 1024)));
   const G = Math.floor((N - 1) / stride) + 1;
   const gpos = new Float32Array(G * G * 3);
   const lats2 = new Float32Array(G * G);
