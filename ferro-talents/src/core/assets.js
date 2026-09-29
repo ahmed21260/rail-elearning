@@ -115,6 +115,14 @@ export function loadImage(url) {
   });
 }
 
+/** Fichier binaire (version web : encodé en base64 dans un .b64.txt). */
+export async function loadBinary(url) {
+  if (CFG) return fetchB64(`${url}.b64.txt`);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url} : ${r.status}`);
+  return r.arrayBuffer();
+}
+
 export async function loadJSON(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${url} : ${r.status}`);

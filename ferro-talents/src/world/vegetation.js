@@ -379,7 +379,7 @@ function treeFromModel(kind, gltf, height, tint) {
   return { kind, parts, height };
 }
 
-export async function buildVegetation(renderer, scene, { quality, models, trees, isFree }) {
+export async function buildVegetation(renderer, scene, { quality, models, trees, isFree, lidar = null }) {
   const atlas = await leafAtlas();
   const barkMat = new THREE.MeshStandardMaterial({
     map: tex("bark_brown_02/Diffuse.jpg"),
@@ -433,9 +433,31 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
     const tint = 0.82 + r() * 0.3;
     items[k].push({ m, c: new THREE.Color(tint * (0.95 + r() * 0.1), tint, tint * (0.9 + r() * 0.1)) });
   };
+  if (lidar) {
+    // Arbres RÉELS : sommets de canopée du LiDAR HD (position, hauteur), essence d'après la BD TOPO
+    const dv = new DataView(lidar.buf);
+    const n = lidar.meta.count;
+    const keep = quality === "low" ? 0.55 : 1; // mobile : une partie des arbres, répartis uniformément
+    for (let i = 0; i < n; i++) {
+      if (keep < 1 && r() > keep) continue;
+      const x = lidar.meta.origin + dv.getUint16(i * 6, true) * lidar.meta.step;
+      const z = lidar.meta.origin + dv.getUint16(i * 6 + 2, true) * lidar.meta.step;
+      const h = dv.getUint8(i * 6 + 4) * lidar.meta.heightScale;
+      const code = dv.getUint8(i * 6 + 5);
+      if (!isFree(x, z)) continue;
+      const fir = code === 1 || (code === 2 && r() < 0.5);
+      const pool = fir ? firIdx : broadIdx;
+      const k = pool[Math.floor(r() * pool.length)];
+      const sc = THREE.MathUtils.clamp(h / species[k].height, 0.3, 2.2);
+      const y = groundHeight(x, z) - 0.2;
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * 6.28), new THREE.Vector3(sc * (0.9 + r() * 0.2), sc, sc * (0.9 + r() * 0.2)));
+      const tint = 0.82 + r() * 0.3;
+      items[k].push({ m, c: new THREE.Color(tint * (0.95 + r() * 0.1), tint, tint * (0.9 + r() * 0.1)) });
+    }
+  }
   const SP = quality === "low" ? 13 : 8.5;
-  const REACH = quality === "low" ? 1300 : 2400;
-  for (let s = -600; s < len + 600; s += SP) {
+  const REACH = lidar ? -1 : quality === "low" ? 1300 : 2400; // pas de forêt inventée quand le LiDAR est là
+  for (let s = -600; s < (lidar ? -600 : len + 600); s += SP) {
     const f = frame(s);
     for (let lat = -REACH; lat < REACH; lat += SP) {
       const x = f.x + f.rx * lat + (r() - 0.5) * SP;
@@ -459,7 +481,7 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
   const CELL = 80;
   const CELL_FAR = 700;
   const cells = new Map();
-  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 230 : 170) : 230;
+  const near = quality === "low" ? 0 : detailed ? (lidar ? (quality === "ultra" ? 190 : 120) : quality === "ultra" ? 230 : 170) : 230;
   lodUniforms.uLodNear.value = near;
   const mk = (list, geo, mat, cast) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);

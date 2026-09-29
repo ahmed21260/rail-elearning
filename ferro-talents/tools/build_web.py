@@ -24,6 +24,10 @@ D = DIST / "assets"
 shutil.copytree(A / "dem", D / "dem")
 if (A / "dem_ign").exists():
     shutil.copytree(A / "dem_ign", D / "dem_ign")
+    tb = D / "dem_ign" / "trees.bin"
+    if tb.exists():  # binaire non servi par l'hébergeur : base64
+        (D / "dem_ign" / "trees.bin.b64.txt").write_text(base64.b64encode(tb.read_bytes()).decode())
+        tb.unlink()
 (D / "hdri").mkdir(parents=True)
 hid = "kloofendal_48d_partly_cloudy_puresky"
 shutil.copy(A / "hdri" / f"{hid}_bg.jpg", D / "hdri" / f"{hid}_bg.jpg")

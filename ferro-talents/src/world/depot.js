@@ -21,12 +21,29 @@ export function declarePads() {
 
 const inRect = (p, r, m = 0) => p.s > r.s0 - m && p.s < r.s1 + m && p.lat > r.l0 - m && p.lat < r.l1 + m;
 
-/** Emprises réservées par le décor bâti (disques { x, z, r }), voir decor.js. */
-export const blockers = [];
+/** Emprises réservées par le bâti (disques { x, z, r }) : grille spatiale, des milliers de bâtiments réels. */
+const BCELL = 40;
+const bgrid = new Map();
+export const blockers = {
+  push(b) {
+    const c0 = Math.floor((b.x - b.r) / BCELL), c1 = Math.floor((b.x + b.r) / BCELL);
+    const r0 = Math.floor((b.z - b.r) / BCELL), r1 = Math.floor((b.z + b.r) / BCELL);
+    for (let i = c0; i <= c1; i++) for (let j = r0; j <= r1; j++) {
+      const k = i * 100003 + j;
+      if (!bgrid.has(k)) bgrid.set(k, []);
+      bgrid.get(k).push(b);
+    }
+  },
+  hit(x, z, margin = 0) {
+    const list = bgrid.get(Math.floor(x / BCELL) * 100003 + Math.floor(z / BCELL));
+    if (list) for (const b of list) if ((x - b.x) ** 2 + (z - b.z) ** 2 < (b.r + margin) ** 2) return true;
+    return false;
+  },
+};
 
 /** Faux si la végétation ne doit pas pousser ici (voie, base, gare, bâtiments…). */
 export function isFree(x, z, grass = false) {
-  for (const b of blockers) if ((x - b.x) ** 2 + (z - b.z) ** 2 < b.r * b.r) return false;
+  if (blockers.hit(x, z)) return false;
   const p = project(x, z, 100);
   if (p.d > 95) return true;
   if (Math.abs(p.lat) < (grass ? 6.4 : 7.4) && p.s > -260 && p.s < lineLength() + 260) return false;

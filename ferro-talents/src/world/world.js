@@ -6,8 +6,9 @@ import { buildTrack, TRACK_LAT } from "./track.js";
 import { declarePads, buildDepot, isFree, DEPOT, ENRAIL } from "./depot.js";
 import { buildVegetation } from "./vegetation.js";
 import { buildDecor } from "./decor.js";
+import { buildBuildings } from "./buildings.js";
 import { buildSignal } from "./signal.js";
-import { BASE, loadJSON, loadHDR, loadImage, loadModel, texturesReady } from "../core/assets.js";
+import { BASE, loadBinary, loadJSON, loadHDR, loadImage, loadModel, texturesReady } from "../core/assets.js";
 import { setupSky } from "../core/renderer.js";
 import { buildTrain } from "../vehicles/train.js";
 import { buildExcavator } from "../vehicles/excavator.js";
@@ -120,13 +121,17 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   const cat = buildTrack(scene, { quality, skipMasts });
   progress("Base travaux et gare…", 0.55);
   const depot = buildDepot(scene, models);
-  const decor = buildDecor(scene, Object.fromEntries(SF_DECOR.map((n, i) => [n, sfd[i]])));
+  const ign = LINE.dem.base === "dem_ign";
+  // Monde réel : on garde la gare du jeu ; le bâti vient de la BD TOPO (plus de hameau inventé)
+  const decor = buildDecor(scene, Object.fromEntries(SF_DECOR.map((n, i) => [n, sfd[i]])), { stationOnly: ign });
+  const realBuildings = ign ? buildBuildings(scene, await loadJSON("data/ign_buildings.json").catch(() => null), quality) : { count: 0 };
   trackSign(scene, TIV.from - 700, `${TIV.limit / 10}`, "#ffc21a", "#111"); // annonce (chiffre des dizaines)
   trackSign(scene, TIV.from, "Z", "#ffc21a", "#111");
   trackSign(scene, TIV.to + 50, "R", "#ffc21a", "#111");
 
   progress("Forêts, prairies et haies…", 0.65);
-  const veg = await buildVegetation(core.renderer, scene, { quality, models, trees: { epicea, hetre, pin, bouleau }, isFree });
+  const lidar = ign ? await Promise.all([loadJSON(`${BASE}/dem_ign/trees.json`), loadBinary(`${BASE}/dem_ign/trees.bin`)]).then(([meta, buf]) => ({ meta, buf })).catch((e) => (console.warn("[FT] arbres LiDAR absents :", e.message), null)) : null;
+  const veg = await buildVegetation(core.renderer, scene, { quality, models, trees: { epicea, hetre, pin, bouleau }, isFree, lidar });
 
   progress("Signaux et engins…", 0.85);
   const signals = Object.fromEntries(SIGNALS.map((d) => [d.id, { api: buildSignal(scene, { s: d.s, lat: TRACK_LAT - 2.8, label: d.label, lamps: {} }), lit: {} }]));
@@ -157,5 +162,5 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   await texturesReady();
   progress("Compilation des shaders…", 0.95);
   core.renderer.compile(scene, new THREE.PerspectiveCamera());
-  return { models, cat, depot, decor, veg, signals, train, other, exc, nac, avatar, chef, spawn, DEPOT };
+  return { models, cat, depot, decor, realBuildings, veg, signals, train, other, exc, nac, avatar, chef, spawn, DEPOT };
 }
