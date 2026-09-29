@@ -53,10 +53,11 @@ def credit(asset_id):
 
 
 def main():
-    manifest = json.loads((VIDEO / "assets-manifest.json").read_text())
+    mpath = Path(sys.argv[sys.argv.index("--manifest") + 1]).resolve() if "--manifest" in sys.argv else VIDEO / "assets-manifest.json"
+    manifest = json.loads(mpath.read_text())
     ledger = []
 
-    for h in manifest["hdri"]:
+    for h in manifest.get("hdri", []):
         files = get_json(f"{API}/files/{h['id']}")
         dest = ASSETS / "hdri" / f"{h['id']}_{h['res']}.hdr"
         print(f"hdri    {h['id']:<40} {download(files['hdri'][h['res']]['hdr']['url'], dest)}")
@@ -70,7 +71,7 @@ def main():
         print(f"hdri    {h['id'] + ' (fond jpg)':<40} ok")
         ledger.append((h["id"], "HDRI", h["role"], [dest.name, bg.name]))
 
-    for t in manifest["textures"] + manifest.get("texture_extras", []):
+    for t in manifest.get("textures", []) + manifest.get("texture_extras", []):
         files = get_json(f"{API}/files/{t['id']}")
         names = []
         for m in t["maps"]:
@@ -79,7 +80,7 @@ def main():
             names.append(f"{t['id']}/{m}.jpg")
         ledger.append((t["id"], "Texture", t["role"], names))
 
-    for mdl in manifest["models"]:
+    for mdl in manifest.get("models", []):
         files = get_json(f"{API}/files/{mdl['id']}")
         g = files["gltf"][mdl["res"]]["gltf"]
         root = ASSETS / "models" / mdl["id"]
@@ -100,6 +101,27 @@ def main():
         print(f"texture {a['id'] + ' (ambientCG)':<40} ok")
         ledger.append((a["id"], "Texture (ambientCG)", a["role"], names))
 
+    extra_lines = []
+    for d in manifest.get("direct", []):
+        print(f"direct  {d['id']:<40} {download(d['url'], ASSETS / d['dest'])}")
+        extra_lines.append(f"| [{d['id']}]({d['source']}) | {d['license']} | {d['author']} | {d['role']} | {d['dest']} |")
+
+    dem = manifest.get("dem")
+    if dem:
+        import math
+        lat, lon = dem["center"]
+        z = dem["zoom"]
+        n = 2 ** z
+        cx = int((lon + 180) / 360 * n)
+        cy = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
+        r = dem["radius_tiles"]
+        for x in range(cx - r, cx + r + 1):
+            for y in range(cy - r, cy + r + 1):
+                download(dem["url"].format(z=z, x=x, y=y), ASSETS / "dem" / f"{z}_{x}_{y}.png")
+        (ASSETS / "dem" / "tiles.json").write_text(json.dumps({"z": z, "x0": cx - r, "y0": cy - r, "n": 2 * r + 1, "center": dem["center"]}))
+        print(f"dem     {(2*r+1)**2} tuiles z{z} autour de {lat}, {lon}")
+        extra_lines.append("| [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) | Données ouvertes (voir attributions AWS / Mapzen) | SRTM, Copernicus et autres sources publiques | Relief réel | dem/*.png |")
+
     lines = [
         "# Crédits des assets",
         "",
@@ -116,6 +138,8 @@ def main():
             continue
         name, authors = credit(asset_id)
         lines.append(f"| [{name}](https://polyhaven.com/a/{asset_id}) | {kind} | {authors} | {role} | {', '.join(names)} |")
+    if extra_lines:
+        lines += ["", "## Autres sources gratuites", "", "| Asset | Licence | Auteur | Rôle | Fichiers |", "|---|---|---|---|---|", *extra_lines]
     lines += ["", "Code tiers embarqué : three.js (MIT, `vendor/THREE_LICENSE`), GSAP (licence standard GreenSock), police Inter (SIL OFL 1.1)."]
     (ASSETS / "ASSETS.md").write_text("\n".join(lines) + "\n")
     print(f"\nCrédits écrits dans {ASSETS / 'ASSETS.md'}")

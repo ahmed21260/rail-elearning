@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Ferro Talents</title>
+    <link rel="icon" href="data:," />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("vendor/fonts/inter-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Inter"; src: url("vendor/fonts/inter-latin-600-normal.woff2") format("woff2"); font-weight: 600; }
+      @font-face { font-family: "Inter"; src: url("vendor/fonts/inter-latin-800-normal.woff2") format("woff2"); font-weight: 800; }
+      :root {
+        --glass: rgba(10, 14, 22, 0.8);
+        --glass-2: rgba(18, 24, 36, 0.92);
+        --line: rgba(255, 255, 255, 0.14);
+        --ink: #f5f7fa;
+        --muted: #b9c3cf;
+        --accent: #ffb400;
+        --accent-ink: #1a1200;
+        --blue: #5cc8ff;
+        --red: #ff4d3d;
+        --yellow: #ffc21a;
+        --green: #2ee57a;
+        --orange: #ff9a3c;
+        --u: clamp(11px, 0.85vw + 0.45vh, 17px);
+        color-scheme: dark;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1220; color: var(--ink); font-family: "Inter", system-ui, sans-serif; font-size: var(--u); user-select: none; -webkit-user-select: none; touch-action: none; }
+      #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      [hidden] { display: none !important; }
+      .glass { background: var(--glass); border: 1px solid var(--line); border-radius: 1em; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+      button { font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.07); border-radius: 0.8em; padding: 0.7em 1.1em; font-weight: 600; }
+      button:hover { background: rgba(255, 255, 255, 0.14); }
+      button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+      button.red { background: #b3261e; border-color: #ff6a5f; }
+      .red { color: var(--red); } .green { color: var(--green); } .yellow { color: var(--yellow); } .blue { color: var(--blue); }
+
+      /* ----- Écrans ----- */
+      .screen { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; z-index: 30; background: radial-gradient(ellipse at 30% 30%, rgba(4, 8, 14, 0.25), rgba(4, 8, 14, 0.88)); overflow: auto; }
+      .panel { width: min(820px, 100%); max-height: 100%; overflow: auto; padding: 2em; }
+      .kicker { font-size: 0.85em; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+      h1 { margin-top: 0.25em; font-size: 2.5em; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; text-wrap: balance; }
+      h2 { font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em; }
+      h3 { margin-top: 1.2em; font-size: 0.85em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+      .panel p { margin-top: 0.8em; line-height: 1.5; color: #dfe5ec; }
+      .panel ul, .panel ol { margin-top: 0.5em; padding-left: 1.2em; line-height: 1.55; }
+      .row { display: flex; flex-wrap: wrap; gap: 0.6em; margin-top: 1.3em; align-items: center; }
+      .seg button { padding: 0.45em 0.9em; }
+      .seg button.on { background: rgba(255, 180, 0, 0.2); border-color: var(--accent); }
+      .legal { margin-top: 1.2em; font-size: 0.8em; color: var(--muted); line-height: 1.5; }
+      #loading .bar { margin-top: 1.4em; height: 0.5em; border-radius: 1em; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+      #load-bar { width: 0; height: 100%; background: var(--accent); transition: width 0.3s; }
+
+      /* Hub des métiers */
+      #hub .panel { width: min(1180px, 100%); }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15em, 1fr)); gap: 1em; margin-top: 1.5em; }
+      .card { padding: 1.3em; display: flex; flex-direction: column; gap: 0.6em; background: var(--glass-2); border: 1px solid var(--line); border-radius: 1em; min-width: 0; }
+      .card .tag { font-size: 0.75em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+      .card h2 { font-size: 1.3em; }
+      .card p { margin: 0; color: #dfe5ec; line-height: 1.45; font-size: 0.95em; }
+      .card .stars { color: var(--yellow); letter-spacing: 0.1em; }
+      .card .grow { flex: 1; }
+      .card.explore { border-color: rgba(255, 180, 0, 0.5); }
+      .pill { display: inline-block; padding: 0.15em 0.6em; border-radius: 1em; background: rgba(255, 255, 255, 0.08); font-size: 0.8em; font-weight: 600; }
+
+      /* ----- HUD ----- */
+      #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+      #hud button, #hud .interactive { pointer-events: auto; }
+      #topbar { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
+      .chip { padding: 0.55em 0.9em; font-weight: 600; white-space: nowrap; }
+      .spacer { flex: 1; }
+      #prompt { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); padding: 0.9em 1.3em; font-weight: 600; text-align: center; pointer-events: auto; cursor: pointer; }
+      #prompt kbd { display: inline-block; min-width: 1.8em; padding: 0.1em 0.5em; margin-right: 0.4em; border-radius: 0.35em; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-family: inherit; }
+      #tip { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 3.5em); transform: translateX(-50%); max-width: min(38em, 58vw); padding: 0.8em 1.2em; border-left: 0.35em solid var(--blue); font-weight: 600; line-height: 1.35; }
+      #tip[data-tone="yellow"] { border-left-color: var(--yellow); } #tip[data-tone="red"] { border-left-color: var(--red); } #tip[data-tone="orange"] { border-left-color: var(--orange); } #tip[data-tone="green"] { border-left-color: var(--green); }
+      #toasts { position: absolute; right: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 3.5em); display: grid; gap: 0.4em; justify-items: end; max-width: 34em; }
+      .toast { padding: 0.6em 0.9em; background: var(--glass); border: 1px solid var(--line); border-radius: 0.8em; font-weight: 600; animation: pop 0.25s ease-out; }
+      .toast.penalty { border-color: var(--red); color: #ffd2cc; } .toast.good { border-color: var(--green); }
+      @keyframes pop { from { opacity: 0; transform: translateY(-6px); } }
+      @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+      #checklist { position: absolute; left: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 3.5em); width: 19em; padding: 0.8em 1em; max-height: 45vh; overflow: auto; }
+      #checklist h4 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4em; }
+      #checklist li { list-style: none; display: flex; gap: 0.5em; padding: 0.22em 0; font-size: 0.92em; line-height: 1.3; color: var(--muted); }
+      #checklist li::before { content: "○"; color: var(--muted); }
+      #checklist li.ok { color: #cfe9d9; } #checklist li.ok::before { content: "✔"; color: var(--green); }
+      #checklist li.now { color: var(--ink); font-weight: 600; } #checklist li.now::before { content: "▶"; color: var(--accent); }
+      #radio { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 8.5em); transform: translateX(-50%); width: min(34em, 70vw); padding: 0.8em 1em; border-left: 0.35em solid var(--accent); }
+      #radio b { color: var(--accent); }
+      #actions { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: grid; gap: 0.45em; }
+      #actions button { min-width: 7.5em; padding: 0.65em 0.6em; }
+
+      /* Manettes virtuelles */
+      .joy { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); width: 9em; height: 9em; border-radius: 50%; background: rgba(10, 14, 22, 0.55); border: 1px solid var(--line); touch-action: none; }
+      .joy .knob { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; background: rgba(255, 255, 255, 0.8); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5); }
+      #joyL { left: 16px; } #joyR { right: 16px; }
+      @media (hover: hover) and (pointer: fine) { .joy, #lever-touch { display: none !important; } }
+
+      /* Manipulateur (train) */
+      #lever { position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 7.4em; padding: 0.7em; display: grid; gap: 0.5em; justify-items: center; }
+      #lever-track { position: relative; width: 3.2em; height: 12em; border-radius: 1.6em; background: linear-gradient(180deg, rgba(92, 200, 255, 0.35), rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.05) 55%, rgba(255, 194, 26, 0.35)); border: 1px solid var(--line); touch-action: none; cursor: ns-resize; }
+      #lever-track::after { content: ""; position: absolute; left: -0.4em; right: -0.4em; top: 50%; height: 2px; background: rgba(255, 255, 255, 0.5); }
+      #lever-thumb { position: absolute; left: 50%; top: 50%; width: 4.2em; height: 1.6em; transform: translate(-50%, -50%); border-radius: 0.6em; background: linear-gradient(180deg, #e9eef3, #9aa6b3); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+      #lever small { font-size: 0.75em; font-weight: 800; letter-spacing: 0.08em; }
+      #lever-label { font-size: 0.8em; font-weight: 800; text-align: center; }
+
+      /* Pupitre train */
+      #cabframe { position: fixed; inset: 0; } #cabframe svg { width: 100%; height: 100%; }
+      #desk { position: absolute; left: 12px; right: 10em; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 0.5em; align-items: flex-end; }
+      .gauge { position: relative; width: 8.2em; height: 8.2em; padding: 0.3em; border-radius: 50%; }
+      .gauge.big { width: 11.5em; height: 11.5em; }
+      .gauge svg { width: 100%; height: 100%; }
+      .gauge .g-bg { stroke: #243142; stroke-width: 12; fill: none; stroke-linecap: round; }
+      .gauge .g-arc { stroke: var(--blue); stroke-width: 12; fill: none; stroke-linecap: round; }
+      .gauge .g-curve { stroke: var(--orange); stroke-width: 6; fill: none; }
+      .gauge .g-lim { stroke: var(--red); stroke-width: 5; }
+      .gauge .ticks line { stroke: #8a97a8; stroke-width: 2; }
+      .gauge .ticks text { fill: #b9c3cf; font-size: 15px; font-weight: 600; text-anchor: middle; font-family: Inter, sans-serif; }
+      .gauge .needle { stroke: var(--orange); stroke-width: 4; stroke-linecap: round; }
+      .gauge .hub { fill: #d0d6dd; }
+      .g-val { position: absolute; left: 0; right: 0; top: 60%; text-align: center; font-size: 0.8em; color: var(--muted); }
+      .g-val b { color: var(--ink); font-size: 1.25em; font-variant-numeric: tabular-nums; }
+      .g-label { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; font-size: 0.62em; color: var(--muted); padding: 0 1.4em; line-height: 1.15; }
+      .g-speed { position: absolute; left: 0; right: 0; top: 36%; text-align: center; font-size: 2.4em; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+      .g-speed.warn { color: var(--orange); }
+      .g-unit { position: absolute; left: 0; right: 0; top: 63%; text-align: center; color: var(--muted); font-size: 0.8em; }
+      .g-limit { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); width: 2.3em; height: 2.3em; border-radius: 50%; border: 0.25em solid var(--red); background: #fff; color: #111; display: grid; place-items: center; font-size: 0.78em; font-weight: 800; }
+      #lamps { display: grid; grid-template-columns: repeat(3, auto); gap: 0.35em; padding: 0.6em; }
+      #lamps span, #ex-lights span { padding: 0.3em 0.55em; border-radius: 0.4em; font-size: 0.72em; font-weight: 800; letter-spacing: 0.05em; background: #1a2230; color: #58657a; text-align: center; }
+      #lamps span.on, #ex-lights span.on { background: #1d5a36; color: #b6ffd2; box-shadow: 0 0 10px rgba(46, 229, 122, 0.4); }
+      #lamps span[data-l="urg"].on, #lamps span[data-l="vacma"].on, #ex-lights span[data-l="gauge"].on, #ex-lights span[data-l="danger"].on { background: #7a1a13; color: #ffd0cb; box-shadow: 0 0 10px rgba(255, 77, 61, 0.5); }
+      #lamps span[data-l="kvb"].on, #ex-lights span[data-l="limiter"].on { background: #6b4a00; color: #ffe39a; }
+      #t-next { display: grid; grid-template-columns: auto 1fr auto; gap: 0.2em 0.8em; align-items: center; padding: 0.7em 0.9em; min-width: 15em; }
+      #t-dot { width: 1.4em; height: 1.4em; border-radius: 50%; box-shadow: 0 0 12px rgba(255, 255, 255, 0.3); }
+      #t-dist { font-size: 1.3em; font-variant-numeric: tabular-nums; }
+      #t-asp { color: var(--muted); font-size: 0.85em; }
+      #t-map { padding: 0.6em 0.8em; width: min(30em, 40vw); } #t-map svg { width: 100%; height: auto; display: block; }
+      .legend { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.78em; margin-top: 0.2em; gap: 0.5em; }
+
+      /* Pupitres engins */
+      #ex-panel { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 19em; padding: 0.9em 1em; display: grid; gap: 0.35em; }
+      #ex-panel .row { margin: 0; display: flex; justify-content: space-between; gap: 1em; font-variant-numeric: tabular-nums; }
+      #ex-panel .row b { color: var(--muted); font-weight: 600; }
+      #ex-lights { display: flex; flex-wrap: wrap; gap: 0.3em; margin-top: 0.4em; }
+      #nc-progress { height: 0.5em; border-radius: 1em; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin-top: 0.4em; }
+      #nc-progress div { height: 100%; width: 0; background: var(--green); }
+      #ex-align { position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%); padding: 0.8em 1.1em; display: grid; gap: 0.2em; text-align: center; font-variant-numeric: tabular-nums; }
+      #al-ok { color: var(--green); font-weight: 600; }
+      #ex-top { position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 12em; padding: 0.5em; }
+      #ex-top svg { width: 100%; display: block; border-radius: 0.5em; }
+      @media (pointer: coarse) { #ex-panel { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 9.8em); } #ex-top { display: none; } }
+      @media (max-width: 760px), (max-height: 520px) {
+        #checklist { display: none; } #t-map { display: none; }
+        #tip { top: auto; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 12em); max-width: 80vw; }
+        .gauge { width: 6.4em; height: 6.4em; } .gauge.big { width: 8.6em; height: 8.6em; }
+      }
+      #debrief-stars { font-size: 2em; color: var(--yellow); letter-spacing: 0.1em; margin-top: 0.2em; }
+      #debrief-score { font-size: 1.4em; font-weight: 800; }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+
+    <div id="hud" hidden>
+      <div id="topbar">
+        <div class="chip glass" id="where">Base travaux · Vallée de la Bruche</div>
+        <div class="chip glass" id="score-chip" hidden>Score <b id="score">100</b></div>
+        <div class="spacer"></div>
+        <button class="chip glass" id="cam-btn">Caméra</button>
+        <button class="chip glass" id="sound-btn">Son : activé</button>
+        <button class="chip glass" id="menu-btn">Métiers</button>
+      </div>
+      <div id="job-hud"></div>
+      <div id="checklist" class="glass" hidden><h4>Procédure</h4><ol id="steps"></ol></div>
+      <div id="tip" class="glass" hidden></div>
+      <div id="radio" class="glass" hidden></div>
+      <div id="toasts"></div>
+      <div id="prompt" class="glass" hidden></div>
+      <div id="actions"></div>
+      <div id="joyL" class="joy interactive" hidden><div class="knob"></div></div>
+      <div id="joyR" class="joy interactive" hidden><div class="knob"></div></div>
+      <div id="lever" class="glass interactive" hidden>
+        <small class="blue">TRACTION</small>
+        <div id="lever-track"><div id="lever-thumb"></div></div>
+        <small class="yellow">FREIN</small>
+        <div id="lever-label">Neutre</div>
+      </div>
+    </div>
+
+    <div id="loading" class="screen">
+      <div class="panel glass">
+        <div class="kicker">Ferro Talents</div>
+        <h1>Découvre les métiers du ferroviaire</h1>
+        <div class="bar"><div id="load-bar"></div></div>
+        <p id="load-text">Chargement…</p>
+        <p class="legal">Relief réel de la vallée de la Bruche (Vosges) · textures et modèles Poly Haven, ambientCG (CC0) · personnage Cesium (CC-BY 4.0).</p>
+      </div>
+    </div>
+
+    <div id="hub" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker">Ferro Talents</div>
+        <h1>Découvre les métiers du ferroviaire en les pratiquant</h1>
+        <p>Une ligne de 5,8 km tracée sur le relief réel de la vallée de la Bruche. Explore la base travaux à pied, monte dans un engin et essaie le métier, avec ses vraies procédures de sécurité.</p>
+        <div class="cards" id="cards"></div>
+        <div class="row seg">
+          <span style="color: var(--muted)">Mode :</span>
+          <button data-guided="1" class="on">Guidé (conseils)</button>
+          <button data-guided="0">Examen</button>
+          <span style="color: var(--muted); margin-left: 1em">Graphismes :</span>
+          <button data-q="low">Économie</button>
+          <button data-q="high">Haute</button>
+          <button data-q="ultra">Ultra</button>
+        </div>
+        <p class="legal">Simulation pédagogique simplifiée : procédures et distances adaptées au jeu. Seuls les référentiels réglementaires des entreprises ferroviaires font foi.</p>
+      </div>
+    </div>
+
+    <div id="brief" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker" id="brief-kicker">Mission</div>
+        <h1 id="brief-title"></h1>
+        <p id="brief-pitch"></p>
+        <h3>Déroulé</h3>
+        <ol id="brief-steps"></ol>
+        <h3>Commandes</h3>
+        <p id="brief-keys" style="color: var(--muted)"></p>
+        <div class="row"><button class="primary" id="brief-go">Prendre le poste</button><button id="brief-back">Retour</button></div>
+      </div>
+    </div>
+
+    <div id="debrief" class="screen" hidden>
+      <div class="panel glass">
+        <div class="kicker">Bilan de mission</div>
+        <h1 id="debrief-title"></h1>
+        <div id="debrief-stars"></div>
+        <div id="debrief-score"></div>
+        <p id="debrief-reason"></p>
+        <h3>Fautes relevées</h3>
+        <ul id="debrief-faults"></ul>
+        <h3>À retenir</h3>
+        <ul id="debrief-lessons"></ul>
+        <h3>Le métier</h3>
+        <p id="debrief-job"></p>
+        <div class="row"><button class="primary" id="debrief-retry">Recommencer</button><button id="debrief-world">Retour à la base</button><button id="debrief-hub">Autres métiers</button></div>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
