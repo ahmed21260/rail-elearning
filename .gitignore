@@ -222,3 +222,7 @@ video/**/out/
 video/**/snapshots/
 video/**/.thumbnails/
 .claude/skills/remotion-*/
+video/hyperframes/assets/hdri/
+video/hyperframes/assets/textures/
+video/hyperframes/assets/models/
+video/**/audit/*/frames/
