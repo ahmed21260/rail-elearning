@@ -17,16 +17,19 @@ function outfitMaterial(src, o, joints) {
       uLegs: { value: new THREE.Color(o.legs) },
       uBand: { value: new THREE.Color(o.band) },
       uGlove: { value: new THREE.Color(o.glove) },
+      // THREE.Color(hex) convertit sRGB → linéaire : aucune couleur en dur dans le shader
+      uSkin: { value: new THREE.Color(o.skin ?? 0xb98a6e) },
+      uBoot: { value: new THREE.Color(0x1c1c1e) },
     });
     sh.vertexShader = sh.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vBind;")
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvBind = position;");
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vBind;\nuniform vec3 uSuit, uLegs, uBand, uGlove;")
+      .replace("#include <common>", "#include <common>\nvarying vec3 vBind;\nuniform vec3 uSuit, uLegs, uBand, uGlove, uSkin, uBoot;")
       .replace(
         "vec4 diffuseColor = vec4( diffuse, opacity );",
         `vec3 b = vBind; float h = b.y; float ax = abs(b.x);
-        vec3 col = h < 0.07 ? vec3(0.08) : (h < 0.95 ? uLegs : (h < 1.56 ? uSuit : vec3(0.64, 0.47, 0.37)));
+        vec3 col = h < 0.07 ? uBoot : (h < 0.95 ? uLegs : (h < 1.56 ? uSuit : uSkin));
         if (h > 1.30 && ax > 0.68) col = uGlove;                       // gants
         float band = 0.0;
         band += step(abs(h - 0.30), 0.022) + step(abs(h - 0.40), 0.022);  // jambes

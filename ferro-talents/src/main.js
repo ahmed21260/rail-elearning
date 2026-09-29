@@ -397,7 +397,7 @@ function endJob() {
 }
 
 $("brief-go").addEventListener("click", () => startJob(jobEntry));
-$("brief-back").addEventListener("click", () => (store.get("welcomed", false) && world.avatar.root.visible ? enterWorld(world.avatar.root.position) : showHub()));
+$("brief-back").addEventListener("click", () => (store.get("welcomed", false) && world.avatar.root.visible ? enterWorld() : showHub()));
 $("caught-ok").addEventListener("click", () => {
   Object.assign(world.avatar.st, { x: world.spawn.x, z: world.spawn.z, speed: 0 });
   enterWorld(null, true);
@@ -458,7 +458,7 @@ function loop() {
   if (state !== "intro") world.chef.animate(dt, 0);
   if (state === "intro") {
     if (input.hit("Escape")) intro.skip();
-    intro.update(dt);
+    intro?.update(dt); // skip() peut terminer l'accueil et remettre intro à null
     explore.update(dt, world.avatar.root.position, false);
   } else if (state === "world") {
     const move = {

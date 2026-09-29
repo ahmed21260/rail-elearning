@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { P, frame, project, trackY } from "../world/line.js";
 import { TRACK_LAT, CONTACT_Y, contactLat, messengerY } from "../world/track.js";
 import { ENRAIL, NACELLE_TASK } from "../world/depot.js";
-import { createMission } from "./common.js";
+import { createMission, disposeAll } from "./common.js";
 
 export const NAC_JOB = {
   id: "nacelle",
@@ -326,7 +326,7 @@ export function createNacelleJob(ctx) {
       };
     },
     exit() {
-      world.scene.remove(dropper, ...poles);
+      disposeAll(world.scene, dropper, ...poles);
       audio.silence();
     },
   };

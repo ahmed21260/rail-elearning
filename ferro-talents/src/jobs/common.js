@@ -54,3 +54,14 @@ export function createMission(ui, steps) {
 }
 
 export const stars = (st) => (st.status !== "success" ? 0 : st.score >= 90 ? 3 : st.score >= 70 ? 2 : 1);
+
+/** Retire des objets de la scène et libère leurs géométries et matériaux (pas les textures partagées). */
+export function disposeAll(scene, ...objs) {
+  for (const o of objs) {
+    scene.remove(o);
+    o.traverse((c) => {
+      c.geometry?.dispose();
+      for (const m of [c.material].flat()) m?.dispose();
+    });
+  }
+}

@@ -5,7 +5,7 @@ import { P, frame, project, trackY, sweep } from "../world/line.js";
 import { TRACK_LAT, OTHER_LAT, RAIL_TOP_Y, CONTACT_Y, contactLat, messengerY } from "../world/track.js";
 import { ENRAIL, WORKSITE } from "../world/depot.js";
 import { groundHeight } from "../world/terrain.js";
-import { createMission } from "./common.js";
+import { createMission, disposeAll } from "./common.js";
 
 export const EXC_JOB = {
   id: "pelle",
@@ -326,9 +326,9 @@ export function createExcavatorJob(ctx) {
     },
     exit() {
       for (const md of mounds) {
-        world.scene.remove(md.g, md.mark);
+        disposeAll(world.scene, md.g, md.mark);
       }
-      world.scene.remove(gaugeGroup);
+      disposeAll(world.scene, gaugeGroup);
       ctx.core.inset = null;
       world.other.visible = false;
       world.depot.skipFill.scale.y = 0.001;
