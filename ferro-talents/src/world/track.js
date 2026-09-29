@@ -181,7 +181,7 @@ function latticeMast() {
 
 function buildCatenary(scene, skip) {
   // Acier galvanisé (gris clair mat), fils cuivre/bronze patinés, isolateurs porcelaine brune émaillée
-  const steel = new THREE.MeshStandardMaterial({ color: 0xa3a9ad, roughness: 0.62, metalness: 0.7, map: tex("metal_plate/Diffuse.jpg", { repeat: 1 }) });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc9ced1, roughness: 0.55, metalness: 0.35, map: tex("metal_plate/Diffuse.jpg", { repeat: 1 }) });
   const dark = new THREE.MeshStandardMaterial({ color: 0x3b3530, roughness: 0.5, metalness: 0.6 });
   const insul = new THREE.MeshStandardMaterial({ color: 0x6a3a22, roughness: 0.22, metalness: 0.05 });
   const concreteM = new THREE.MeshStandardMaterial({ color: 0x9a978f, roughness: 0.95 });
