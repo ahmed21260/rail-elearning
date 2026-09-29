@@ -170,6 +170,9 @@ if (!loadErr) {
       ["45-catenaire", () => { const F = window.__ft, P = window.__ftP; F.enterWorld(); const p = P(608, -4.8); Object.assign(F.world.avatar.st, { x: p.x, z: p.z }); F.rig.o = { yaw: 2.4, pitch: 0.05, dist: 7 }; }],
       ["46-hameau", () => { const F = window.__ft, P = window.__ftP; F.enterWorld(); const p = P(330, -8); Object.assign(F.world.avatar.st, { x: p.x, z: p.z }); F.rig.o = { yaw: 0.6, pitch: 0.1, dist: 10 }; }],
     ];
+    const decor = await page.evaluate(() => window.__ft.world.decor);
+    console.log("décor posé :", JSON.stringify(decor));
+    check(decor.gare === 1 && decor.maisons >= 10, `décor : gare et au moins 10 maisons posées (${JSON.stringify(decor)})`);
     for (const [name, fn] of views) {
       await page.evaluate(`(${fn.toString()})()`);
       await page.evaluate(() => window.__ft.job?.update(0.05));

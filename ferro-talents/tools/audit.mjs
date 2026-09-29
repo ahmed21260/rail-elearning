@@ -94,6 +94,25 @@ const shot = async (name) => {
   await page.screenshot({ path: path.join(out, `${name}.jpg`), type: "jpeg", quality: 85, timeout: 300000 });
 };
 
+// 0. Répartition de la charge par matériau (qui coûte quoi)
+if (process.env.BREAKDOWN) {
+  const rows = await page.evaluate(() => {
+    const F = window.__ft; F.showHub(); F.world.veg.update(F.camera.position);
+    const by = new Map();
+    F.world.scene.traverse((o) => {
+      if (!o.isMesh || !o.visible) return;
+      let p = o.parent; while (p) { if (!p.visible) return; p = p.parent; }
+      const g = o.geometry; const t = (g.index ? g.index.count : g.attributes.position.count) / 3;
+      const n = o.isInstancedMesh ? o.count : 1;
+      const k = `${[o.material].flat()[0].name || [o.material].flat()[0].type} · ${Math.round(t)} tri`;
+      const r = by.get(k) || { k, meshes: 0, inst: 0, trisM: 0, shadow: o.castShadow };
+      r.meshes++; r.inst += n; r.trisM += (t * n) / 1e6; by.set(k, r);
+    });
+    return [...by.values()].sort((a, b) => b.trisM - a.trisM).slice(0, 25).map((r) => ({ ...r, trisM: +r.trisM.toFixed(2) }));
+  });
+  console.table(rows);
+}
+
 // 1. Charge GPU et couleurs par vue
 const views = {
   hub: () => window.__ft.showHub(),

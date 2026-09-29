@@ -11,6 +11,9 @@ export const wind = { value: 0 };
 /** Ajoute le balancement au vent (dépend de la hauteur locale et de la position de l'instance). */
 function addWind(mat, { amp = 0.08, freq = 1.6, heightRef = 8, flutter = 0 } = {}) {
   const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey.bind(mat);
+  // Chaque réglage doit avoir son propre programme (sinon three.js réutilise le premier compilé)
+  mat.customProgramCacheKey = () => `${prevKey()}|wind:${amp},${freq},${heightRef},${flutter}`;
   mat.onBeforeCompile = (sh, r) => {
     prev?.(sh, r);
     sh.uniforms.uWind = wind;
@@ -264,6 +267,27 @@ function fir(seed) {
 }
 
 // ------------------------------------------------------------------------------------
+/** LOD par instance : `near` = arbre 3D affiché à moins de uLodNear m, sinon imposteur (même règle, sans trou). */
+export const lodUniforms = { uLodCam: { value: new THREE.Vector3() }, uLodNear: { value: 0 } };
+function addLodCull(mat, keepNear) {
+  const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey.bind(mat);
+  mat.customProgramCacheKey = () => `${prevKey()}|lod:${keepNear}`;
+  mat.onBeforeCompile = (sh, r) => {
+    prev?.(sh, r);
+    Object.assign(sh.uniforms, lodUniforms);
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform vec3 uLodCam;\nuniform float uLodNear;").replace(
+      "#include <project_vertex>",
+      `#ifdef USE_INSTANCING
+        float lodD = distance(instanceMatrix[3].xz, uLodCam.xz);
+        if (${keepNear ? "lodD >= uLodNear" : "lodD < uLodNear"}) transformed = vec3(0.0);
+      #endif
+      #include <project_vertex>`,
+    );
+  };
+  return mat;
+}
+
 function makeImpostor(renderer, meshes, height, size = 256) {
   const sc = new THREE.Scene();
   const grp = new THREE.Group();
@@ -427,63 +451,80 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
     }
   }
 
-  // LOD : par cellule, arbres 3D près de la caméra, imposteurs au loin
-  // Arbres réalistes (≈ 7 000 triangles) : cellules plus fines et 3D complète seulement à proximité
+  // LOD : arbres 3D dans de petites cellules proches (activées selon la distance), imposteurs dans de grandes
+  // cellules toujours actives ; la bascule 3D ↔ imposteur se fait par instance dans le shader (uLodNear).
   const detailed = !!(real.broad || real.fir);
-  const CELL = detailed ? 80 : 160;
+  const CELL = 80;
+  const CELL_FAR = 700;
   const cells = new Map();
-  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 160 : 100) : 230;
-  species.forEach((sp, k) => {
-    const byCell = new Map();
-    for (const it of items[k]) {
+  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 160 : 110) : 230;
+  lodUniforms.uLodNear.value = near;
+  const mk = (list, geo, mat, cast) => {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((it, i) => {
+      im.setMatrixAt(i, it.m);
+      im.setColorAt(i, it.c);
+    });
+    im.computeBoundingSphere();
+    im.castShadow = cast;
+    im.receiveShadow = true;
+    scene.add(im);
+    return im;
+  };
+  const groupBy = (list, size) => {
+    const by = new Map();
+    for (const it of list) {
       const e = it.m.elements;
-      const key = `${Math.floor(e[12] / CELL)},${Math.floor(e[14] / CELL)}`;
-      if (!byCell.has(key)) byCell.set(key, []);
-      byCell.get(key).push(it);
+      const key = `${Math.floor(e[12] / size)},${Math.floor(e[14] / size)}`;
+      if (!by.has(key)) by.set(key, []);
+      by.get(key).push(it);
     }
-    for (const [key, list] of byCell) {
+    return by;
+  };
+  species.forEach((sp, k) => {
+    addLodCull(sp.imp.material, false);
+    for (const list of groupBy(items[k], CELL_FAR).values()) mk(list, sp.imp.geometry, sp.imp.material, false);
+    if (!near) return;
+    for (const p of sp.parts) if (!p.material.userData.lod) {
+      addLodCull(p.material, true);
+      p.material.userData.lod = true;
+    }
+    for (const [key, list] of groupBy(items[k], CELL)) {
       if (!cells.has(key)) {
         const [cx, cz] = key.split(",").map(Number);
-        cells.set(key, { center: new THREE.Vector3((cx + 0.5) * CELL, 0, (cz + 0.5) * CELL), full: [], far: [] });
+        cells.set(key, { center: new THREE.Vector3((cx + 0.5) * CELL, 0, (cz + 0.5) * CELL), full: [] });
       }
       const cell = cells.get(key);
-      const mk = (geo, mat, cast) => {
-        const im = new THREE.InstancedMesh(geo, mat, list.length);
-        list.forEach((it, i) => {
-          im.setMatrixAt(i, it.m);
-          im.setColorAt(i, it.c);
-        });
-        im.computeBoundingSphere();
-        im.castShadow = cast;
-        im.receiveShadow = true;
-        scene.add(im);
-        return im;
-      };
-      if (near) for (const p of sp.parts) cell.full.push(mk(p.geometry, p.material, p.cast));
-      cell.far.push(mk(sp.imp.geometry, sp.imp.material, false));
-      cell.center.y = list[0].m.elements[13];
+      for (const p of sp.parts) cell.full.push(mk(list, p.geometry, p.material, p.cast));
     }
   });
 
   // Sous-bois et bords de voie : buissons, fougères, fleurs, rochers, souches (modèles Poly Haven)
-  const placeModel = (gltf, count, where, scaleRange = [0.8, 1.4], cast = true) => {
-    const parts = [];
+  const props = []; // { mesh, center, range } : masqués au-delà de leur distance d'affichage
+  const placeModel = (gltf, count, where, scaleRange = [0.8, 1.4], cast = true, range = 400) => {
+    // Les modèles Poly Haven rangent leurs variantes côte à côte : chaque nœud maillé = une variante
     gltf.scene.updateMatrixWorld(true);
+    const variants = [];
     gltf.scene.traverse((o) => {
-      if (o.isMesh) {
-        o.material.transparent = false;
-        o.material.alphaTest = 0.45;
-        parts.push({ geometry: o.geometry.clone().applyMatrix4(o.matrixWorld), material: o.material });
-      }
+      if (!o.isMesh) return;
+      o.material.transparent = false;
+      o.material.alphaTest = 0.45;
+      const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      g.computeBoundingBox();
+      const c = g.boundingBox.getCenter(new THREE.Vector3());
+      g.translate(-c.x, 0, -c.z);
+      variants.push({ geometry: g, material: o.material, list: [] });
     });
-    const list = [];
-    for (let i = 0; i < count * 6 && list.length < count; i++) {
+    for (let i = 0; i < count * 6 && variants.reduce((a, v) => a + v.list.length, 0) < count; i++) {
       const p = where(r);
       if (!p) continue;
       const sc = scaleRange[0] + r() * (scaleRange[1] - scaleRange[0]);
-      list.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(p.x, groundHeight(p.x, p.z) - 0.05, p.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * 6.28), new THREE.Vector3(sc, sc, sc)) });
+      variants[Math.floor(r() * variants.length)].list.push({ m: new THREE.Matrix4().compose(new THREE.Vector3(p.x, groundHeight(p.x, p.z) - 0.05, p.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * 6.28), new THREE.Vector3(sc, sc, sc)) });
     }
-    for (const part of parts) chunked(scene, part.geometry, part.material, list, { cell: 120, cast });
+    for (const v of variants) {
+      if (!v.list.length) continue;
+      for (const mesh of chunked(scene, v.geometry, v.material, v.list, { cell: 120, cast })) props.push({ mesh, center: mesh.boundingSphere.center, range: range + mesh.boundingSphere.radius });
+    }
   };
   const alongTrack = (a0, a1, s0 = -100, s1 = len + 100) => (rr) => {
     const s = s0 + rr() * (s1 - s0);
@@ -504,24 +545,25 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
     return fm > 0.3 && fm < 0.9 && isFree(x, z) ? { x, z } : null;
   };
   const k = quality === "low" ? 0.35 : 1;
-  placeModel(models.shrub_02, Math.round(900 * k), alongTrack(9.5, 30), [0.7, 1.5]);
-  placeModel(models.fern_02, Math.round(1400 * k), (rr) => (rr() < 0.5 ? forestEdge(rr) : alongTrack(7.2, 12)(rr)), [0.8, 1.6], false);
-  placeModel(models.celandine_01, Math.round(900 * k), alongTrack(9, 26), [1.0, 1.8], false);
-  placeModel(models.grass_medium_02, Math.round(2500 * k), alongTrack(5.8, 10), [1.2, 2.2], false);
-  placeModel(models.rock_moss_set_01, Math.round(120 * k), forestEdge, [0.6, 1.4]);
-  placeModel(models.tree_stump_01, Math.round(60 * k), forestEdge, [0.8, 1.2]);
+  // Une variante par emplacement (×2 emplacements pour garder la densité), distance d'affichage selon la taille
+  placeModel(models.shrub_02, Math.round(1800 * k), alongTrack(9.5, 30), [0.7, 1.5], true, 700);
+  placeModel(models.fern_02, Math.round(2800 * k), (rr) => (rr() < 0.5 ? forestEdge(rr) : alongTrack(7.2, 12)(rr)), [0.8, 1.6], false, 320);
+  placeModel(models.celandine_01, Math.round(1800 * k), alongTrack(9, 26), [1.0, 1.8], false, 260);
+  placeModel(models.grass_medium_02, Math.round(5000 * k), alongTrack(5.8, 10), [1.2, 2.2], false, 260);
+  placeModel(models.rock_moss_set_01, Math.round(240 * k), forestEdge, [0.6, 1.4], true, 1200);
+  placeModel(models.tree_stump_01, Math.round(60 * k), forestEdge, [0.8, 1.2], true, 600);
 
   // Herbe dense autour de la caméra (tuiles recyclées)
   const grass = quality === "low" ? null : grassField(scene, isFree);
 
   return {
     update(cam) {
+      lodUniforms.uLodCam.value.copy(cam);
       for (const c of cells.values()) {
-        const d = Math.hypot(c.center.x - cam.x, c.center.z - cam.z);
-        const full = d < near + CELL * 0.7;
-        for (const m of c.full) m.visible = full;
-        for (const m of c.far) m.visible = !full;
+        const vis = Math.hypot(c.center.x - cam.x, c.center.z - cam.z) < near + CELL * 0.75;
+        for (const m of c.full) m.visible = vis;
       }
+      for (const p of props) p.mesh.visible = Math.hypot(p.center.x - cam.x, p.center.z - cam.z) < p.range;
       grass?.update(cam);
     },
   };
