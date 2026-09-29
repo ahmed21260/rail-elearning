@@ -41,7 +41,7 @@ if (process.env.DIST) {
   });
 }
 page.on("pageerror", (e) => errors.push(e.message));
-page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+page.on("console", (m) => (m.type() === "error" || m.text().includes("[FT]")) && errors.push(m.text()));
 page.on("response", (r) => r.status() >= 400 && errors.push(`${r.status()} ${r.url()}`));
 const t0 = Date.now();
 await page.goto(url);

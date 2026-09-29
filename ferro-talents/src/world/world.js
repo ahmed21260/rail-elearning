@@ -88,16 +88,16 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   progress("Tracé de la ligne et relief réel…", 0.05);
   initLine(await loadJSON("data/line.json"));
   await loadDEM(`${BASE}/dem`);
-  const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch(() => null)));
+  const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null))));
   const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, pin, bouleau, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),
     loadImage(`${BASE}/hdri/kloofendal_48d_partly_cloudy_puresky_bg.jpg`),
     loadModel("worker.glb"),
-    loadModel("sf/pelle_atek.glb").catch(() => null), // pelle réaliste (Sketchfab), sinon version procédurale
-    loadModel("sf/epicea.glb").catch(() => null), // arbres réalistes (Sketchfab), sinon arbres procéduraux
-    loadModel("sf/hetre.glb").catch(() => null),
-    loadModel("sf/pin.glb").catch(() => null),
-    loadModel("sf/bouleau.glb").catch(() => null),
+    loadModel("sf/pelle_atek.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)), // pelle réaliste (Sketchfab), sinon version procédurale
+    loadModel("sf/epicea.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)), // arbres réalistes (Sketchfab), sinon arbres procéduraux
+    loadModel("sf/hetre.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
+    loadModel("sf/pin.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
+    loadModel("sf/bouleau.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
     ...MODELS.map((m) => loadModel(m)),
     document.fonts.load("800 120px Inter"),
   ]);

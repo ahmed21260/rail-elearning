@@ -60,8 +60,23 @@ export async function loadHDR(id) {
   return t;
 }
 
+/** Refuse un modèle dont une texture déclarée n'a pas pu être chargée (GLTFLoader l'ignore en silence et
+ * laisse un matériau blanc) : l'appelant bascule alors sur sa version procédurale. */
+function checkTextures(id, gltf) {
+  const decl = gltf.parser.json.materials || [];
+  const got = new Map();
+  gltf.scene.traverse((o) => [o.material].flat().filter(Boolean).forEach((m) => got.set(m.name, m)));
+  const missing = decl.filter((d) => d.pbrMetallicRoughness?.baseColorTexture && !got.get(d.name || "")?.map && got.has(d.name || ""));
+  if (missing.length) throw new Error(`${id} : textures manquantes (${missing.map((m) => m.name).join(", ")})`);
+  return gltf;
+}
+
 /** Modèle Poly Haven (dossier models/<id>/<id>.gltf) ou fichier .glb direct. */
 export async function loadModel(id) {
+  return checkTextures(id, await loadModelRaw(id));
+}
+
+async function loadModelRaw(id) {
   const loader = new GLTFLoader();
   if (id.endsWith(".glb")) {
     if (!CFG) return loader.loadAsync(`${BASE}/models/${id}`);

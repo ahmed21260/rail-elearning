@@ -364,9 +364,11 @@ function treeFromModel(kind, gltf, height, tint) {
     const leafy = !!(mat0.alphaTest || mat0.transparent || mat0.alphaMap || /leaf|leav|needle|branch|folia|spruce|pine/i.test(mat0.name));
     const mat = mat0.clone();
     mat.transparent = false;
+    mat.depthWrite = true; // feuillage BLEND rendu opaque : sinon la forêt se voit à travers et scintille
     if (leafy) {
       mat.alphaTest = THREE.MathUtils.clamp(mat.alphaTest || 0.3, 0.2, 0.4); // seuil du modèle (feuillage dense)
       mat.side = THREE.DoubleSide;
+      mat.alphaToCoverage = true; // bords de feuilles lissés par le MSAA au lieu d'un découpage crénelé
     }
     mat.color.multiply(new THREE.Color(...tint));
     mat.roughness = Math.max(mat.roughness ?? 0.8, 0.75);
@@ -457,7 +459,7 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
   const CELL = 80;
   const CELL_FAR = 700;
   const cells = new Map();
-  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 160 : 110) : 230;
+  const near = quality === "low" ? 0 : detailed ? (quality === "ultra" ? 230 : 170) : 230;
   lodUniforms.uLodNear.value = near;
   const mk = (list, geo, mat, cast) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
@@ -508,6 +510,7 @@ export async function buildVegetation(renderer, scene, { quality, models, trees,
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
       o.material.transparent = false;
+      o.material.depthWrite = true;
       o.material.alphaTest = 0.45;
       const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
       g.computeBoundingBox();
