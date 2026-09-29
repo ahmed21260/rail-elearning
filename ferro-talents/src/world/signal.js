@@ -83,7 +83,7 @@ export function buildSignal(scene, { s, lat, label, lamps }) {
     add(new THREE.CircleGeometry(0.15, 24), new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.4 }), x, PANEL_Y + y, 0.085);
     const lens = add(
       new THREE.CircleGeometry(0.105, 24),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: color, emissiveIntensity: 0, roughness: 0.15 }),
+      new THREE.MeshStandardMaterial({ name: "signal-lamp", color: 0x0a0a0a, emissive: color, emissiveIntensity: 0, roughness: 0.15 }), // feu allumé : émissif fort voulu (halo)
       x,
       PANEL_Y + y,
       0.09,

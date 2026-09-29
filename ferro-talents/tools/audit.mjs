@@ -79,7 +79,8 @@ const colorSpaceAudit = () => page.evaluate(() => {
   window.__ft.world.scene.traverse((o) => {
     const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
     for (const m of mats) {
-      for (const s of colorSlots) if (m[s] && m[s].colorSpace !== "srgb") issues.add(`${s} non sRGB : ${m.name || m.type} (${o.name || o.type})`);
+      // Textures de rendu (imposteurs) : couleurs déjà linéaires, pas de conversion sRGB attendue
+      for (const s of colorSlots) if (m[s] && !m[s].isRenderTargetTexture && m[s].colorSpace !== "srgb") issues.add(`${s} non sRGB : ${m.name || m.type} (${o.name || o.type})`);
       for (const s of dataSlots) if (m[s] && m[s].colorSpace === "srgb") issues.add(`${s} en sRGB : ${m.name || m.type} (${o.name || o.type})`);
       if (m.color && [m.color.r, m.color.g, m.color.b].some((v) => !Number.isFinite(v))) issues.add(`couleur NaN : ${m.name}`);
       if (m.emissive && m.emissiveIntensity > 4 && !/beacon|lamp|head/i.test(m.name)) issues.add(`émissif très fort (${m.emissiveIntensity}) : ${m.name || m.type}`);
