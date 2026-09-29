@@ -1,0 +1,16 @@
+<!doctype html><html><body>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+const t0=performance.now(); const log=(m)=>console.log(`${((performance.now()-t0)/1000).toFixed(1)}s ${m}`);
+log("start");
+try {
+const gl=await new GLTFLoader().loadAsync("../assets/models/sf/pelle_atek.glb"); log("glb chargé");
+const { buildExcavator, EXC } = await import("../src/vehicles/excavator.js"); log("module");
+const s=new THREE.Scene(); const ex=buildExcavator(s, gl); log("construit "+JSON.stringify({b:EXC.boomLen.toFixed(2),st:EXC.stickLen.toFixed(2),p:EXC.pivot.toArray().map(v=>+v.toFixed(2))}));
+Object.assign(ex.joints,EXC.transport); ex.pose(ex.joints); ex.update();
+const top=Math.max(...ex.probes().map(p=>p.y)); log("transport top="+top.toFixed(2)+" tip="+ex.tip().toArray().map(v=>v.toFixed(2)));
+window.info={top}; } catch(e){ log("ERREUR "+e.stack); }
+window.done=true;
+</script></body></html>

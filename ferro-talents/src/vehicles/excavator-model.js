@@ -80,7 +80,9 @@ export function buildFromModel(scene, gltf) {
   const src = gltf.scene;
   const wrap = new THREE.Group();
   wrap.add(src);
-  const node = (n) => src.getObjectByName(n);
+  let root = null;
+  // Les pièces sont déplacées vers le squelette articulé : on les cherche dans les deux arbres
+  const node = (n) => src.getObjectByName(n) || root?.getObjectByName(n);
   // Échelle par le diamètre des roues, sol à y = 0
   wrap.updateMatrixWorld(true);
   const wb = new THREE.Box3().setFromObject(node("right_front_wheel"));
@@ -102,7 +104,7 @@ export function buildFromModel(scene, gltf) {
   EXC.pivot.copy(pBoom).sub(turn);
 
   // Squelette articulé (mêmes conventions que la version procédurale)
-  const root = new THREE.Group();
+  root = new THREE.Group();
   const upper = new THREE.Group();
   upper.position.copy(turn).setX(0).setZ(0);
   root.add(upper);
@@ -195,6 +197,7 @@ export function buildFromModel(scene, gltf) {
   // Géométrie utile : dents du godet, profils hauts, arrière de tourelle, poste de conduite
   const bucketPts = pointsIn(node("shovel"), bucketPivot);
   const tipLocal = bucketPts.reduce((best, p) => (p.length() > best.length() ? p : best), new THREE.Vector3());
+  tipLocal.x = 0; // milieu de la rangée de dents
   const boomTop = topProfile(pointsIn(node("boom_1"), boom), 8);
   const stickTop = topProfile(pointsIn(node("boom_2"), stickPivot), 4);
   const upperBox = new THREE.Box3().setFromObject(node("turnable_part"));
