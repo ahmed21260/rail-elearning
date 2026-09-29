@@ -7,6 +7,8 @@ export const EXC = {
   stickLen: 2.9,
   pivot: new THREE.Vector3(0.45, 1.95, -0.95), // pied de flèche dans la tourelle
   limits: { boom: [-0.55, 1.15], stick: [-2.55, -0.45], bucket: [-1.9, 1.2] },
+  // Position transport : flèche basse, balancier replié, godet rentré (point haut ≈ 2,5 m)
+  transport: { swing: 0, boom: -0.3, stick: -2.45, bucket: 1.0 },
 };
 
 function bucketGeometry() {
@@ -113,7 +115,7 @@ export function buildExcavator(scene) {
 
   const rr = new RoadRail(root, { wheelbase: 3.4, rideHeight: 0.0, railLift: 0.06, maxRoad: 20 / 3.6, maxRail: 20 / 3.6 });
   rr.guideArms = guideArms;
-  const joints = { swing: 0, boom: 0.35, stick: -2.1, bucket: 0.9 };
+  const joints = { ...EXC.transport };
   const tip = new THREE.Vector3();
   const pose = (j) => {
     upper.rotation.y = j.swing;
@@ -155,7 +157,7 @@ export function buildExcavator(scene) {
     probes() {
       root.updateMatrixWorld(true);
       return [
-        boom.localToWorld(new THREE.Vector3(0, 0.3, -EXC.boomLen * 0.5)),
+        ...[0.2, 0.45, 0.7, 0.95].map((k) => boom.localToWorld(new THREE.Vector3(0, 0.5, -EXC.boomLen * k))),
         stickPivot.localToWorld(new THREE.Vector3(0, 0.3, 0)),
         bucketPivot.localToWorld(new THREE.Vector3(0, 0, 0)),
         bucketPivot.localToWorld(tipLocal.clone()),

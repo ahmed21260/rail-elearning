@@ -2,7 +2,7 @@
 // limiteur de hauteur sous caténaire, gabarit de la voie contiguë en circulation.
 import * as THREE from "three";
 import { P, frame, project, trackY } from "../world/line.js";
-import { TRACK_LAT, OTHER_LAT, RAIL_TOP_Y } from "../world/track.js";
+import { TRACK_LAT, OTHER_LAT, RAIL_TOP_Y, CONTACT_Y, contactLat, messengerY } from "../world/track.js";
 import { ENRAIL, WORKSITE } from "../world/depot.js";
 import { groundHeight } from "../world/terrain.js";
 import { createMission } from "./common.js";
@@ -60,7 +60,8 @@ export function createExcavatorJob(ctx) {
     <div id="ex-panel" class="glass">
       <div class="row"><b>Mode</b><span id="ex-mode">Route</span></div>
       <div class="row"><b>Vitesse</b><span id="ex-speed">0 km/h</span></div>
-      <div class="row"><b>Hauteur godet</b><span id="ex-h">0,0 m</span></div>
+      <div class="row"><b>Point haut</b><span id="ex-h">0,0 m</span></div>
+      <div class="row"><b>Distance caténaire</b><span id="ex-cat">—</span></div>
       <div class="row"><b>Rotation</b><span id="ex-swing">0°</span></div>
       <div class="row"><b>Godet</b><span id="ex-load">vide</span></div>
       <div class="row"><b>Benne</b><span id="ex-dumps">0 / 4</span></div>
@@ -79,17 +80,34 @@ export function createExcavatorJob(ctx) {
     return { s: q.s, lat: q.lat, y: p.y - trackY(q.s) };
   }
 
+  /** Point le plus haut de l'équipement (flèche, balancier, godet) au-dessus du rail. */
+  function topHeight(pose) {
+    ex.pose(pose);
+    return Math.max(...ex.probes().map((p) => railPos(p).y - RAIL_TOP_Y));
+  }
+
   function clampJoints(next, prev) {
-    // Limiteur de hauteur : refuse tout mouvement qui monte au-dessus de la limite
-    ex.pose(next); // pose d'essai : move() réapplique la pose acceptée ensuite
-    const probes = ex.probes();
-    const hmax = Math.max(...probes.map((p) => railPos(p).y - RAIL_TOP_Y));
-    st.limiter = hmax > HEIGHT_LIMIT - 0.05;
-    if (hmax > HEIGHT_LIMIT && (next.boom > prev.boom || next.stick > prev.stick)) {
+    // Limiteur de hauteur : tout mouvement qui ferait dépasser la limite (ou monter au-delà) est refusé.
+    const hPrev = topHeight(prev);
+    const hNext = topHeight(next); // pose d'essai : move() réapplique la pose acceptée ensuite
+    st.limiter = Math.max(hPrev, hNext) > HEIGHT_LIMIT - 0.15;
+    if (hNext > HEIGHT_LIMIT && hNext >= hPrev - 1e-4) {
       if (Math.floor(m.st.t * 3) % 2 === 0) audio.beep(900, 0.06, 0.05);
-      return { ...next, boom: Math.min(next.boom, prev.boom), stick: Math.min(next.stick, prev.stick) };
+      st.limitHits = (st.limitHits || 0) + 1;
+      return { ...next, boom: prev.boom, stick: prev.stick, bucket: prev.bucket };
     }
     return next;
+  }
+
+  /** Distance minimale équipement ↔ fils de la caténaire (fil de contact et porteur, voie 1). */
+  function wireClearance() {
+    let d = Infinity;
+    for (const p of ex.probes()) {
+      const q = railPos(p);
+      const cl = contactLat(q.s, TRACK_LAT);
+      d = Math.min(d, Math.hypot(q.lat - cl, q.y - CONTACT_Y), Math.hypot(q.lat - TRACK_LAT, q.y - messengerY(q.s)));
+    }
+    return d;
   }
 
   return {
@@ -98,7 +116,7 @@ export function createExcavatorJob(ctx) {
     debug: { st, rr, ex },
     debugInfo() {
       const t = railPos(ex.tip());
-      return { tip: { s: +t.s.toFixed(2), lat: +t.lat.toFixed(2), y: +t.y.toFixed(2) }, joints: Object.fromEntries(Object.entries(ex.joints).map(([k, v]) => [k, +v.toFixed(2)])), loaded: st.loaded, dumps: st.dumps, work: st.work, brake: rr.brake, dug: [...st.dug], limiter: st.limiter };
+      return { top: +topHeight(ex.joints).toFixed(2), clr: +wireClearance().toFixed(2), tip: { s: +t.s.toFixed(2), lat: +t.lat.toFixed(2), y: +t.y.toFixed(2) }, joints: Object.fromEntries(Object.entries(ex.joints).map(([k, v]) => [k, +v.toFixed(2)])), loaded: st.loaded, dumps: st.dumps, work: st.work, brake: rr.brake, dug: [...st.dug], limiter: st.limiter };
     },
     cams: ["follow", "cab", "orbit"],
     get camMode() {
@@ -150,7 +168,11 @@ export function createExcavatorJob(ctx) {
       ex.update();
       // Déplacement flèche levée
       const tipRel = railPos(ex.tip());
-      if (Math.abs(rr.v) > 0.5 && tipRel.y - RAIL_TOP_Y > 3.2) m.penalize("fleche", 10, "Déplacement avec la flèche levée");
+      const top = topHeight(ex.joints);
+      if (Math.abs(rr.v) > 0.5 && top > 3.4) m.penalize("fleche", 10, "Déplacement avec la flèche levée");
+      // Contact caténaire : fin de mission (le limiteur doit l'empêcher)
+      const clr = wireClearance();
+      if (clr < 0.4) m.fail("Contact de l'équipement avec la caténaire : risque d'électrisation et d'arrachement des fils.");
       // Vitesses sur rail
       if (rr.mode === "rail") {
         const q = project(rr.x, rr.z, 30);
@@ -216,14 +238,17 @@ export function createExcavatorJob(ctx) {
           }
         }
       }
-      if (m.is("transport") && ex.joints.boom < 0.45 && ex.joints.stick < -1.9 && ex.joints.bucket > 0.6 && !rr.brake) m.done("transport");
+      if (m.is("transport") && top < 3.2 && ex.joints.bucket > 0.6 && !rr.brake) m.done("transport");
       // Gyrophare
       ex.beacon.material.emissiveIntensity = st.engine ? (Math.sin(m.st.t * 12) > 0 ? 6 : 0.2) : 0;
       audio.machine(st.engine ? 0.35 + 0.5 * Math.min(1, Math.abs(rr.v) / 5 + Object.values(cmd).reduce((a, v) => a + Math.abs(v || 0), 0) * 0.3) : 0, Object.values(cmd).reduce((a, v) => a + Math.abs(v || 0), 0) / 2, Math.abs(rr.v));
       // Interface
       $("ex-mode").textContent = `${rr.mode === "rail" ? "Rail" : rr.mode === "road" ? "Route" : "Enraillement…"} · ${st.work ? "Travail" : "Translation"}`;
       $("ex-speed").textContent = `${rr.kmh.toFixed(1)} km/h`;
-      $("ex-h").textContent = `${(tipRel.y - RAIL_TOP_Y).toFixed(1)} m (limite ${HEIGHT_LIMIT} m)`;
+      $("ex-h").textContent = `${top.toFixed(1)} m / ${HEIGHT_LIMIT} m`;
+      $("ex-h").className = top > HEIGHT_LIMIT - 0.3 ? "yellow" : "";
+      $("ex-cat").textContent = `${clr.toFixed(1)} m`;
+      $("ex-cat").className = clr < 1.2 ? "red" : "";
       $("ex-swing").textContent = `${Math.round((ex.joints.swing * 180) / Math.PI)}°`;
       $("ex-load").textContent = st.loaded ? "plein" : "vide";
       $("ex-dumps").textContent = `${st.dumps} / 4`;
@@ -256,7 +281,7 @@ export function createExcavatorJob(ctx) {
       else if (m.is("chantier")) tip = "Circule jusqu'au chantier balisé (cônes) et arrête-toi au droit des repères orange.";
       else if (m.is("frein")) tip = "Serre le frein de parc (B), puis passe en mode travail (T).";
       else if (m.is("degarnir")) tip = st.trainS !== null ? "Circulation annoncée : ramène la flèche côté voie 1, hors du gabarit rouge !" : st.loaded ? "Pivote vers la benne verte (A/D), lève (I) et vide le godet (L)." : "Descends le godet dans un repère orange (I/K, W/S) et referme-le (J) pour charger.";
-      else if (m.is("transport")) tip = "Replie le godet (J), abaisse la flèche (K), balancier rentré (S), puis desserre le frein (B).";
+      else if (m.is("transport")) tip = "Position transport : godet replié (J), flèche basse (K), point haut sous 3,2 m, puis desserre le frein (B).";
       ui.tip(ctx.guided && tip ? { tone: st.gauge ? "red" : "blue", text: tip } : null);
     },
     camera(dt, rig) {

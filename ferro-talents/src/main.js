@@ -12,6 +12,8 @@ import { wind } from "./world/vegetation.js";
 import { TRAIN_START } from "./jobs/train-rules.js";
 import { createTrainJob, TRAIN_JOB } from "./jobs/train.js";
 import { createExcavatorJob, EXC_JOB } from "./jobs/excavator.js";
+import { EXC } from "./vehicles/excavator.js";
+const EXC_TRANSPORT = EXC.transport;
 import { createNacelleJob, NAC_JOB } from "./jobs/nacelle.js";
 import { stars } from "./jobs/common.js";
 
@@ -190,7 +192,7 @@ function resetVehicles() {
     rr.update(0, { throttle: 0, steer: 0 });
   };
   park(world.exc.rr, 322, -30);
-  Object.assign(world.exc.joints, { swing: 0, boom: 0.35, stick: -2.1, bucket: 0.9 });
+  Object.assign(world.exc.joints, EXC_TRANSPORT);
   world.exc.pose(world.exc.joints);
   world.exc.load.visible = false;
   world.exc.update();

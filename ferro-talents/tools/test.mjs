@@ -191,6 +191,7 @@ if (!loadErr) {
         key.hold("j", ex.joints.bucket < 0.7); key.hold("k", ex.joints.boom > 0.4); key.hold("w", ex.joints.stick > -1.95);
         key.hold("a", ex.joints.swing < -0.05); key.hold("d", ex.joints.swing > 0.05);
         if (ex.joints.bucket >= 0.7 && ex.joints.boom <= 0.4 && ex.joints.stick <= -1.95 && rr.brake) { key.tap("t"); key.tap("b"); }
+        if (J.debugInfo().top > 3.1) { key.hold("k", true); }
       }`, 30000);
     console.log("pelle :", JSON.stringify(r));
     check(r.status === "success", "conducteur de pelle : mission réussie (enraillement, chantier, 4 godets)");
