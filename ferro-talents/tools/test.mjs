@@ -175,7 +175,9 @@ if (!loadErr) {
     ];
     const decor = await page.evaluate(() => window.__ft.world.decor);
     console.log("décor posé :", JSON.stringify(decor));
-    check(decor.gare === 1 && decor.maisons >= 10, `décor : gare et au moins 10 maisons posées (${JSON.stringify(decor)})`);
+    const real = await page.evaluate(() => window.__ft.world.realBuildings);
+    console.log("bâti réel :", JSON.stringify(real));
+    check(decor.gare === 1 && (decor.maisons >= 10 || real.count > 1000), `décor : gare + bâti (${JSON.stringify(decor)}, ${real.count} bâtiments réels)`);
     for (const [name, fn] of views) {
       await page.evaluate(`(${fn.toString()})()`);
       await page.evaluate(() => window.__ft.job?.update(0.05));

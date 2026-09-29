@@ -210,9 +210,9 @@ function terrainMaterial() {
             float lc = dot( c.rgb, vec3( 0.3, 0.59, 0.11 ) ) + 1e-3;
             vec3 nearC = mix( c.rgb, o * ( lc / lo ), 0.45 * ( 1.0 - kg ) );
             #ifdef USE_COLOR
-              vec3 farC = o * 1.15 / max( vColor.rgb, vec3( 0.25 ) ); // annule la teinte procédurale appliquée ensuite
+              vec3 farC = o * 0.82 / max( vColor.rgb, vec3( 0.25 ) ); // annule la teinte procédurale appliquée ensuite
             #else
-              vec3 farC = o * 1.15;
+              vec3 farC = o * 0.82;
             #endif
             c.rgb = mix( nearC, farC, far * ( 1.0 - kg ) );
           #endif
@@ -284,8 +284,8 @@ export function buildTerrain(scene, quality) {
   scene.add(m1);
 
   // Grande grille (MNT) ; abaissée sous la bande pour éviter les chevauchements
-  // Grille lointaine ≈ 1 024 (haute) / 768 (économie) sommets de côté, quelle que soit la finesse du MNT
-  const stride = Math.max(1, Math.round(N / (quality === "low" ? 768 : 1024)));
+  // Grille lointaine ≈ 800 (haute) / 640 (économie) sommets de côté, quelle que soit la finesse du MNT
+  const stride = Math.max(1, Math.round(N / (quality === "low" ? 640 : 800)));
   const G = Math.floor((N - 1) / stride) + 1;
   const gpos = new Float32Array(G * G * 3);
   const lats2 = new Float32Array(G * G);
