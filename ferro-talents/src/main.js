@@ -528,6 +528,7 @@ function loop() {
   }
   camera.updateProjectionMatrix();
   world.veg.update(camera.position);
+  world.cat.update(camera.position);
   if (!NO_RENDER) core.render();
   input.endFrame();
   frames++;

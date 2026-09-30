@@ -41,7 +41,7 @@ const frameStats = () => page.evaluate(() => {
 
 // Charge estimée sans rendu : triangles des objets visibles après le LOD (borne haute, sans culling)
 const loadEstimate = () => page.evaluate(() => {
-  const F = window.__ft; F.world.veg.update(F.camera.position);
+  const F = window.__ft; F.world.veg.update(F.camera.position); F.world.cat.update(F.camera.position);
   let tris = 0, inst = 0, meshes = 0, shadowTris = 0;
   F.world.scene.traverse((o) => {
     if (!o.isMesh || !o.visible) return;
@@ -98,7 +98,7 @@ const shot = async (name) => {
 // 0. Répartition de la charge par matériau (qui coûte quoi)
 if (process.env.BREAKDOWN) {
   const rows = await page.evaluate(() => {
-    const F = window.__ft; F.showHub(); F.world.veg.update(F.camera.position);
+    const F = window.__ft; F.showHub(); F.world.veg.update(F.camera.position); F.world.cat.update(F.camera.position);
     const by = new Map();
     F.world.scene.traverse((o) => {
       if (!o.isMesh || !o.visible) return;

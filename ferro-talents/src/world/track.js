@@ -25,7 +25,7 @@ export const messengerY = (s) => {
   return CONTACT_Y + 1.35 - 0.9 * 4 * u * (1 - u);
 };
 
-export function buildTrack(scene, { quality, skipMasts = [] }) {
+export function buildTrack(scene, { quality, skipMasts = [], pack = null }) {
   const S0 = -250;
   const S1 = lineLength() + 250;
   const gravel = new THREE.MeshStandardMaterial({
@@ -50,28 +50,45 @@ export function buildTrack(scene, { quality, skipMasts = [] }) {
     scene.add(m);
   }
 
-  const sleeperGeo = new THREE.BoxGeometry(2.6, 0.22, 0.28);
-  const sleeperMat = new THREE.MeshStandardMaterial({
-    map: tex("concrete_floor_worn_001/Diffuse.jpg"),
-    normalMap: tex("concrete_floor_worn_001/nor_gl.jpg", { srgb: false }),
-    color: new THREE.Color(0.95, 0.93, 0.9),
-    roughness: 0.85,
-  });
-  const clipGeo = new THREE.BoxGeometry(0.15, 0.07, 0.13);
-  const clipMat = new THREE.MeshStandardMaterial({ color: 0x2a2826, roughness: 0.6, metalness: 0.5 });
+  // Traverses et attaches : pièces réelles du pack (traverse bois, selle + tirefonds) si présent, sinon béton simplifié
+  const part = (name) => {
+    let mesh = null;
+    pack?.scene.traverse((c) => c.isMesh && c.name.startsWith(name) && (mesh = c));
+    return mesh;
+  };
+  const woodMesh = part("traverse_bois");
+  const fixMesh = part("attache_selle");
+  const real = !!(woodMesh && fixMesh);
+  const sleeperGeo = real ? woodMesh.geometry : new THREE.BoxGeometry(2.6, 0.22, 0.28);
+  const sleeperMat = real
+    ? woodMesh.material
+    : new THREE.MeshStandardMaterial({
+        map: tex("concrete_floor_worn_001/Diffuse.jpg"),
+        normalMap: tex("concrete_floor_worn_001/nor_gl.jpg", { srgb: false }),
+        color: new THREE.Color(0.95, 0.93, 0.9),
+        roughness: 0.85,
+      });
+  const clipGeo = real ? fixMesh.geometry : new THREE.BoxGeometry(0.15, 0.07, 0.13);
+  const clipMat = real ? fixMesh.material : new THREE.MeshStandardMaterial({ color: 0x2a2826, roughness: 0.6, metalness: 0.5 });
+  // Traverse bois : 0,18 m, dessus sous la selle (3 cm) qui porte le patin du rail
+  const sleeperY = real ? RAIL_BASE_Y - 0.03 - 0.18 : 0.07;
+  const clipOffsets = real ? [-RAIL_HALF, RAIL_HALF] : [-RAIL_HALF - 0.1, -RAIL_HALF + 0.1, RAIL_HALF - 0.1, RAIL_HALF + 0.1];
   const sleepers = [];
   const clips = [];
   const r = rng(11);
   for (const tl of [TRACK_LAT, OTHER_LAT]) {
     for (let s = S0; s < S1; s += 0.6) {
-      sleepers.push({ m: matrixAt(new THREE.Matrix4(), s, tl, 0.07, (r() - 0.5) * 0.02) });
-      if (quality !== "low" || Math.round(s / 0.6) % 2 === 0) {
-        for (const d of [-RAIL_HALF - 0.1, -RAIL_HALF + 0.1, RAIL_HALF - 0.1, RAIL_HALF + 0.1]) clips.push({ m: matrixAt(new THREE.Matrix4(), s, tl + d, 0.21) });
+      const yaw = (r() - 0.5) * 0.02;
+      sleepers.push({ m: matrixAt(new THREE.Matrix4(), s, tl, sleeperY, yaw) });
+      if (real || quality !== "low" || Math.round(s / 0.6) % 2 === 0) {
+        for (const d of clipOffsets) clips.push({ m: matrixAt(new THREE.Matrix4(), s, tl + d, real ? RAIL_BASE_Y - 0.03 : 0.21, real ? yaw : 0) });
       }
     }
   }
   chunked(scene, sleeperGeo, sleeperMat, sleepers, { receive: true, cast: true, cell: 100 });
-  chunked(scene, clipGeo, clipMat, clips, { cell: 60 });
+  // Attaches détaillées : seulement près de la caméra (invisibles au-delà de ~120 m)
+  const clipCells = chunked(scene, clipGeo, clipMat, clips, { cell: 60 });
+  const clipNear = real ? (quality === "low" ? 80 : 120) : Infinity;
 
   const railProfile = [
     [-0.075, 0], [-0.075, 0.012], [-0.012, 0.03], [-0.0085, 0.045], [-0.0085, 0.115], [-0.036, 0.125],
@@ -89,7 +106,13 @@ export function buildTrack(scene, { quality, skipMasts = [] }) {
       scene.add(new THREE.Mesh(sweep({ s0: S0, s1: S1, step: 2, lat, y: RAIL_BASE_Y + 0.1722, profile: [[-0.029, 0], [0.029, 0]] }), shiny));
     }
   }
-  return buildCatenary(scene, skipMasts);
+  const cat = buildCatenary(scene, skipMasts);
+  const c = new THREE.Vector3();
+  cat.update = (cam) => {
+    if (clipNear === Infinity) return;
+    for (const m of clipCells) m.visible = c.copy(m.boundingSphere.center).distanceTo(cam) - m.boundingSphere.radius < clipNear;
+  };
+  return cat;
 }
 
 function boxBetween(parts, s, p1, p2, t) {

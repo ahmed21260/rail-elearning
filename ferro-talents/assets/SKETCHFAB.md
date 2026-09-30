@@ -12,3 +12,4 @@
 | [Gare Saint Rémy (Saint Rémy Train Station)](https://sketchfab.com/3d-models/gare-saint-remy-saint-remy-train-station-7631ad326ac94572abfb6626c17f6878) | Batton | CC BY 4.0 | Bâtiment voyageurs de la gare de Valbruche | models/sf/gare_saint_remy.glb |
 | [Birch tree](https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172) | evolveduk | CC BY 4.0 | Bouleaux des lisières | models/sf/bouleau.glb |
 | [Pine Tree [Game-ready]](https://sketchfab.com/3d-models/pine-tree-game-ready-dc3fbd9205cf4027a4455d1f415e0478) | Wenedi (^-^)/ | CC BY 4.0 | Conifères des forêts vosgiennes | models/sf/pin.glb |
+| [Railway track train route Railway parts rail](https://sketchfab.com/3d-models/railway-track-train-route-railway-parts-rail-ff61d3a223af4ee3b1e67bbc9c52dbe9) | Mehdi Shahsavan | CC BY 4.0 | Traverses bois et attaches (selle + tirefonds) de la voie ; FBX traité par `tools/blender/track_pack.py` | models/sf/voie_bois.glb |

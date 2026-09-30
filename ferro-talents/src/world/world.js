@@ -90,7 +90,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
   initLine(await loadJSON("data/line.json"));
   await loadDEM(`${BASE}/${LINE.dem.base || "dem"}`); // MNT IGN RGE ALTI (LiDAR HD) si présent
   const sfDecor = Promise.all(SF_DECOR.map((n) => loadModel(`sf/${n}.glb`).catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null))));
-  const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, pin, bouleau, ...mods] = await Promise.all([
+  const [hdr, bgImg, workerGltf, excGltf, epicea, hetre, pin, bouleau, voieBois, ...mods] = await Promise.all([
     loadHDR("kloofendal_48d_partly_cloudy_puresky"),
     loadImage(`${BASE}/hdri/kloofendal_48d_partly_cloudy_puresky_bg.jpg`),
     loadModel("worker.glb"),
@@ -99,6 +99,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
     loadModel("sf/hetre.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
     loadModel("sf/pin.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
     loadModel("sf/bouleau.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)),
+    loadModel("sf/voie_bois.glb").catch((e) => (console.warn("[FT] modèle ignoré :", e.message), null)), // traverses bois + attaches réelles (Sketchfab)
     ...MODELS.map((m) => loadModel(m)),
     document.fonts.load("800 120px Inter"),
   ]);
@@ -118,7 +119,7 @@ export async function buildWorld(core, scene, quality, progress = () => {}) {
     (s, lat) => lat < 0 && SIGNALS.some((d) => Math.abs(d.s - s) < 8),
     (s, lat) => lat < 0 && Math.abs(s - ENRAIL.s) < ENRAIL.half + 2,
   ];
-  const cat = buildTrack(scene, { quality, skipMasts });
+  const cat = buildTrack(scene, { quality, skipMasts, pack: voieBois });
   progress("Base travaux et gare…", 0.55);
   const depot = buildDepot(scene, models);
   const ign = LINE.dem.base === "dem_ign";
