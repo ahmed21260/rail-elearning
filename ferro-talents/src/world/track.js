@@ -25,7 +25,7 @@ export const messengerY = (s) => {
   return CONTACT_Y + 1.35 - 0.9 * 4 * u * (1 - u);
 };
 
-export function buildTrack(scene, { quality, skipMasts = [], pack = null }) {
+export function buildTrack(scene, { quality, skipMasts = [], pack = null, mastPack = null }) {
   const S0 = -250;
   const S1 = lineLength() + 250;
   const gravel = new THREE.MeshStandardMaterial({
@@ -106,7 +106,7 @@ export function buildTrack(scene, { quality, skipMasts = [], pack = null }) {
       scene.add(new THREE.Mesh(sweep({ s0: S0, s1: S1, step: 2, lat, y: RAIL_BASE_Y + 0.1722, profile: [[-0.029, 0], [0.029, 0]] }), shiny));
     }
   }
-  const cat = buildCatenary(scene, skipMasts);
+  const cat = buildCatenary(scene, skipMasts, mastPack);
   const c = new THREE.Vector3();
   cat.update = (cam) => {
     if (clipNear === Infinity) return;
@@ -202,7 +202,23 @@ function latticeMast() {
   return latticeGeo;
 }
 
-function buildCatenary(scene, skip) {
+/** Géométrie d'une pièce d'un modèle glTF, réduite aux attributs des géométries du jeu (position, normale, uv). */
+function packGeometry(gltf, name) {
+  let g = null;
+  gltf?.scene.traverse((c) => c.isMesh && c.name.startsWith(name) && (g = c.geometry));
+  if (!g) return null;
+  g = g.index ? g.clone() : mergeGeometries([g.clone()]);
+  for (const a of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(a)) g.deleteAttribute(a);
+  if (!g.attributes.uv) g.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+  return g;
+}
+
+function buildCatenary(scene, skip, mastPack) {
+  // Poteau SNCF réel (objet BIM « SNCF-063-C2V-RIG-300 ») et son massif, sinon treillis procédural
+  const realMast = packGeometry(mastPack, "poteau_treillis");
+  const realBase = packGeometry(mastPack, "massif_beton");
+  const MAST_HALF = realMast ? 0.21 : 0.085; // demi-largeur du poteau côté voie : appui des ferrures
+  const BASE_TOP = -0.3; // dessus du massif (le pied du poteau y est scellé)
   // Acier galvanisé (gris clair mat), fils cuivre/bronze patinés, isolateurs porcelaine brune émaillée
   const steel = new THREE.MeshStandardMaterial({ color: 0xaeb4b8, roughness: 0.5, metalness: 0.45 }); // acier galvanisé
   const dark = new THREE.MeshStandardMaterial({ color: 0x3b3530, roughness: 0.5, metalness: 0.6 });
@@ -223,15 +239,15 @@ function buildCatenary(scene, skip) {
       const dir = Math.sign(tl - mastLat);
       const parts = [];
       // Poteau à treillis galvanisé, orienté face à la voie
-      const lat = latticeMast().clone();
+      const lat = (realMast || latticeMast()).clone();
       const f0 = frame(s);
       lat.rotateY(-f0.th);
-      lat.translate(f0.x + f0.rx * mastLat, f0.y, f0.z + f0.rz * mastLat);
+      lat.translate(f0.x + f0.rx * mastLat, f0.y + (realMast ? BASE_TOP : 0), f0.z + f0.rz * mastLat);
       parts.push(lat);
       const zig = contactLat(s, tl);
       const yT = CONTACT_Y + 1.35; // porteur
       const yB = CONTACT_Y + 0.25; // tube de console
-      const m0 = mastLat + dir * 0.12;
+      const m0 = mastLat + dir * (MAST_HALF + 0.035);
       // Console tubulaire : tube horizontal du porteur, tube incliné (hauban), bras de rappel du fil de contact
       tubeBetween(parts, s, [m0 + dir * 0.7, yT], [tl + dir * 0.9, yT], 0.03);
       tubeBetween(parts, s, [m0 + dir * 0.65, yB], [zig - dir * 0.35, yB - 0.08], 0.028);
@@ -247,9 +263,17 @@ function buildCatenary(scene, skip) {
       insulatorBetween(ins, s, [m0, yT], [m0 + dir * 0.7, yT]);
       insulatorBetween(ins, s, [m0, yB], [m0 + dir * 0.65, yB]);
       push(s, "insul", mergeGeometries(ins));
-      const base = new THREE.BoxGeometry(0.9, 0.5, 0.9);
-      const b = P(s, mastLat, -0.55);
-      base.translate(b.x, b.y, b.z);
+      let base;
+      if (realBase) {
+        base = realBase.clone();
+        base.rotateY(-f0.th);
+        const b = P(s, mastLat, BASE_TOP);
+        base.translate(b.x, b.y, b.z);
+      } else {
+        base = new THREE.BoxGeometry(0.9, 0.5, 0.9);
+        const b = P(s, mastLat, -0.55);
+        base.translate(b.x, b.y, b.z);
+      }
       push(s, "concrete", base);
       masts.push({ s, lat: mastLat, num: `${mastLat < 0 ? 1 : 2}-${String(n).padStart(3, "0")}` });
     }

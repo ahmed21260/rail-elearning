@@ -48,5 +48,15 @@
     "name": "pin",
     "uid": "dc3fbd9205cf4027a4455d1f415e0478",
     "role": "Conifères des forêts vosgiennes"
+  },
+  {
+    "name": "voie_bois",
+    "uid": "ff61d3a223af4ee3b1e67bbc9c52dbe9",
+    "role": "Traverses bois et attaches de la voie (FBX traité par tools/blender/track_pack.py)"
+  },
+  {
+    "name": "poteau_catenaire",
+    "uid": "594f7b180dc9479faa32fac1d761cea8",
+    "role": "Poteau caténaire SNCF à treillis et massif béton (objet BIM, traité par tools/blender/catenary_pack.py)"
   }
 ]
